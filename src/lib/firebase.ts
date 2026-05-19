@@ -69,7 +69,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
         friendlyMessage = 'Quota exceeded: Firebase project limits reached. Please check the Google Cloud Console.';
         break;
       case 'failed-precondition':
-        friendlyMessage = 'Operation failed: This might be due to a missing index or other precondition. Check the Firestore console.';
+        friendlyMessage = `Operation failed: This might be due to a missing index or other precondition. ${error instanceof Error ? error.message : ''}`;
         break;
       case 'unavailable':
         friendlyMessage = 'Service unavailable: The database is temporarily offline or connection was lost.';
