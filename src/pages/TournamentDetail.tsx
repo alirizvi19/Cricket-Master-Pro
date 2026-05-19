@@ -553,12 +553,22 @@ export default function TournamentDetail() {
 
       {/* Add Team Modal */}
       {showTeamModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowTeamModal(false)}
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
           >
+            <button 
+              onClick={() => setShowTeamModal(false)}
+              className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-xl text-text-dim hover:text-white transition-all"
+            >
+              <X size={20} />
+            </button>
             <h2 className="text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
               Register New Team
             </h2>
@@ -4670,12 +4680,22 @@ function MatchesSection({
       </AnimatePresence>
 
       {showMatchModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowMatchModal(false)}
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
           >
+            <button 
+              onClick={() => setShowMatchModal(false)}
+              className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-xl text-text-dim hover:text-white transition-all"
+            >
+              <X size={20} />
+            </button>
             <h2 className="text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
               Schedule Match
             </h2>

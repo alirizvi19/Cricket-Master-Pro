@@ -71,7 +71,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             initial={{ opacity: 0, x: 100 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 100 }}
-            className="fixed inset-0 z-40 bg-[#F5F5F0] md:hidden pt-20 px-6"
+            className="fixed inset-0 z-40 bg-bg-main md:hidden pt-20 px-6"
           >
             <div className="flex flex-col gap-6 text-2xl font-bold uppercase italic">
               <Link to="/tournaments" onClick={() => setIsMenuOpen(false)}>Tournaments</Link>
