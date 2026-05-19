@@ -49,10 +49,21 @@ import {
   Star,
   Award,
   Target,
-  Medal
+  Medal,
 } from "lucide-react";
 import Markdown from "react-markdown";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 import { motion, AnimatePresence } from "motion/react";
 import Loading from "../components/Loading";
 import { useNavigate } from "react-router-dom";
@@ -501,7 +512,7 @@ export default function TournamentDetail() {
           label="War Room"
         />
         <TabButton
-          active={activeTab === "analytics" as any}
+          active={activeTab === ("analytics" as any)}
           onClick={() => setActiveTab("analytics" as any)}
           icon={<Award size={16} />}
           label="Analytics & Caps"
@@ -535,7 +546,7 @@ export default function TournamentDetail() {
             defaultOvers={tournament.oversPerMatch}
           />
         )}
-        {activeTab === "analytics" as any && (
+        {activeTab === ("analytics" as any) && (
           <TournamentAnalyticsSection teams={teams} />
         )}
       </div>
@@ -2999,11 +3010,22 @@ function MatchDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl overflow-y-auto">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl overflow-y-auto"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="fixed top-6 right-6 z-[110] p-4 bg-black/50 hover:bg-brand hover:text-black border border-white/10 hover:border-brand rounded-full text-white backdrop-blur-md transition-all shadow-2xl opacity-70 hover:opacity-100"
+      >
+        <X size={24} />
+      </button>
+
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-bg-secondary border border-white/10 rounded-[3rem] p-6 md:p-12 w-full max-w-5xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] my-8 relative overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-bg-secondary border border-white/10 rounded-[3rem] p-6 md:p-12 w-full max-w-5xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] my-8 relative overflow-hidden mt-24 md:mt-12"
       >
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand/5 blur-[120px] rounded-full -mr-48 -mt-48" />
 
@@ -3147,12 +3169,24 @@ function MatchDetailsModal({
                               <table className="w-full text-left">
                                 <thead>
                                   <tr className="text-[9px] font-black uppercase tracking-widest text-text-dim border-b border-white/5">
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2">Batsman</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">R</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">B</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">4s</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">6s</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">SR</th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2">
+                                      Batsman
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      R
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      B
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      4s
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      6s
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      SR
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
@@ -3218,11 +3252,21 @@ function MatchDetailsModal({
                               <table className="w-full text-left">
                                 <thead>
                                   <tr className="text-[9px] font-black uppercase tracking-widest text-text-dim border-b border-white/5">
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2">Bowler</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">O</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">M</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">R</th>
-                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">W</th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2">
+                                      Bowler
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      O
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      M
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      R
+                                    </th>
+                                    <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
+                                      W
+                                    </th>
                                     <th className="py-2 sm:py-4 px-1 sm:px-2 text-right">
                                       Econ
                                     </th>
@@ -3461,8 +3505,12 @@ function MatchDetailsModal({
                           <Star size={24} />
                         </div>
                         <div>
-                          <h3 className="text-xl font-black uppercase tracking-tighter text-white italic">AI Match Summary</h3>
-                          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand/80">Gemini Generated</p>
+                          <h3 className="text-xl font-black uppercase tracking-tighter text-white italic">
+                            AI Match Summary
+                          </h3>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand/80">
+                            Gemini Generated
+                          </p>
                         </div>
                       </div>
                       <div className="prose prose-invert prose-brand max-w-none text-sm md:text-base leading-relaxed opacity-90 marker:text-brand font-medium">
@@ -3542,84 +3590,198 @@ function MatchDetailsModal({
                   {balls.length > 0 && (
                     <div className="mt-16 space-y-12">
                       <div className="text-center">
-                        <Activity size={48} className="mx-auto text-blue-400 mb-4" />
-                        <h3 className="text-3xl font-black uppercase italic text-white">Data Visualizations</h3>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-text-dim">Wagon Wheel & Run Rate</p>
+                        <Activity
+                          size={48}
+                          className="mx-auto text-blue-400 mb-4"
+                        />
+                        <h3 className="text-3xl font-black uppercase italic text-white">
+                          Data Visualizations
+                        </h3>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-text-dim">
+                          Wagon Wheel & Run Rate
+                        </p>
                       </div>
-                      
+
                       <div className="grid lg:grid-cols-2 gap-8">
                         {(() => {
-                           const regions: Record<string, number> = {};
-                           balls.forEach(b => {
-                             if (b.region && b.runs > 0 && !b.isWicket) {
-                               regions[b.region] = (regions[b.region] || 0) + b.runs;
-                             }
-                           });
-                           const pieData = Object.entries(regions).map(([name, value]) => ({ name, value }));
-                           const COLORS = ['#E2FF00', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-                           if (pieData.length === 0) return (
-                             <div className="bg-bg-secondary border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center opacity-50 h-[400px]">
-                               <MapPin size={48} className="mb-4 text-text-dim" />
-                               <h4 className="text-lg font-bold">Wagon Wheel</h4>
-                               <p className="text-xs">No region data recorded for this match.</p>
-                             </div>
-                           );
-                           return (
-                             <div className="bg-bg-secondary border border-white/5 rounded-3xl p-8 shadow-xl h-[400px] flex flex-col relative">
-                               <h4 className="text-center text-sm font-black uppercase tracking-widest text-text-dim mb-4 italic">Wagon Wheel (Runs)</h4>
-                               <div className="flex-1 w-full min-h-[300px]">
-                                 <ResponsiveContainer width="100%" height="100%">
-                                   <PieChart>
-                                     <Pie data={pieData} cx="50%" cy="50%" outerRadius={120} innerRadius={60} dataKey="value" nameKey="name" stroke="#1A1A1A" strokeWidth={2} label={({name, value}) => `${name} (${value})`} labelLine={false}>
-                                       {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                     </Pie>
-                                     <RechartsTooltip contentStyle={{ backgroundColor: '#1A1A1A', borderColor: '#333', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.1)' }} itemStyle={{ color: '#E2FF00', fontWeight: 'bold' }} />
-                                   </PieChart>
-                                 </ResponsiveContainer>
-                               </div>
-                             </div>
-                           );
+                          const regions: Record<string, number> = {};
+                          balls.forEach((b) => {
+                            if (b.region && b.runs > 0 && !b.isWicket) {
+                              regions[b.region] =
+                                (regions[b.region] || 0) + b.runs;
+                            }
+                          });
+                          const pieData = Object.entries(regions).map(
+                            ([name, value]) => ({ name, value }),
+                          );
+                          const COLORS = [
+                            "#E2FF00",
+                            "#3b82f6",
+                            "#10b981",
+                            "#f59e0b",
+                            "#ef4444",
+                            "#8b5cf6",
+                            "#ec4899",
+                            "#14b8a6",
+                            "#f97316",
+                          ];
+                          if (pieData.length === 0)
+                            return (
+                              <div className="bg-bg-secondary border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center opacity-50 h-[400px]">
+                                <MapPin
+                                  size={48}
+                                  className="mb-4 text-text-dim"
+                                />
+                                <h4 className="text-lg font-bold">
+                                  Wagon Wheel
+                                </h4>
+                                <p className="text-xs">
+                                  No region data recorded for this match.
+                                </p>
+                              </div>
+                            );
+                          return (
+                            <div className="bg-bg-secondary border border-white/5 rounded-3xl p-8 shadow-xl h-[400px] flex flex-col relative">
+                              <h4 className="text-center text-sm font-black uppercase tracking-widest text-text-dim mb-4 italic">
+                                Wagon Wheel (Runs)
+                              </h4>
+                              <div className="flex-1 w-full min-h-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie
+                                      data={pieData}
+                                      cx="50%"
+                                      cy="50%"
+                                      outerRadius={120}
+                                      innerRadius={60}
+                                      dataKey="value"
+                                      nameKey="name"
+                                      stroke="#1A1A1A"
+                                      strokeWidth={2}
+                                      label={({ name, value }) =>
+                                        `${name} (${value})`
+                                      }
+                                      labelLine={false}
+                                    >
+                                      {pieData.map((entry, index) => (
+                                        <Cell
+                                          key={`cell-${index}`}
+                                          fill={COLORS[index % COLORS.length]}
+                                        />
+                                      ))}
+                                    </Pie>
+                                    <RechartsTooltip
+                                      contentStyle={{
+                                        backgroundColor: "#1A1A1A",
+                                        borderColor: "#333",
+                                        borderRadius: "1rem",
+                                        border:
+                                          "1px solid rgba(255,255,255,0.1)",
+                                      }}
+                                      itemStyle={{
+                                        color: "#E2FF00",
+                                        fontWeight: "bold",
+                                      }}
+                                    />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
+                          );
                         })()}
 
                         {(() => {
-                           let cumA = 0;
-                           let cumB = 0;
-                           const overData: Record<number, any> = {};
-                           balls.forEach(b => {
-                             const o = Math.floor(b.overs || 0);
-                             if (!overData[o]) overData[o] = { over: o + 1, teamA: cumA, teamB: cumB };
-                             if (b.innings === 1) {
-                               cumA += (b.runs || 0) + (b.extra || 0);
-                               overData[o].teamA = cumA;
-                             } else {
-                               cumB += (b.runs || 0) + (b.extra || 0);
-                               overData[o].teamB = cumB;
-                             }
-                           });
-                           const chartData = Object.values(overData).sort((a: any, b: any) => a.over - b.over);
-                           
-                           return (
-                             <div className="bg-bg-secondary border border-white/5 rounded-3xl p-8 shadow-xl h-[400px] flex flex-col relative">
-                               <h4 className="text-center text-sm font-black uppercase tracking-widest text-text-dim mb-4 italic">Worm Chart (Cumulative Runs)</h4>
-                               <div className="flex-1 w-full min-h-[300px]">
-                                 <ResponsiveContainer width="100%" height="100%">
-                                   <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                                     <XAxis dataKey="over" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
-                                     <YAxis stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
-                                     <RechartsTooltip contentStyle={{ backgroundColor: '#1A1A1A', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.1)' }} />
-                                     <Line type="monotone" dataKey="teamA" name={match.teamAName || 'Team A'} stroke="#E2FF00" strokeWidth={3} dot={false} />
-                                     <Line type="monotone" dataKey="teamB" name={match.teamBName || 'Team B'} stroke="#3b82f6" strokeWidth={3} dot={false} />
-                                   </LineChart>
-                                 </ResponsiveContainer>
-                               </div>
-                             </div>
-                           );
+                          let cumA = 0;
+                          let cumB = 0;
+                          const overData: Record<number, any> = {};
+                          balls.forEach((b) => {
+                            const o = Math.floor(b.overs || 0);
+                            if (!overData[o])
+                              overData[o] = {
+                                over: o + 1,
+                                teamA: cumA,
+                                teamB: cumB,
+                              };
+                            if (b.innings === 1) {
+                              cumA += (b.runs || 0) + (b.extra || 0);
+                              overData[o].teamA = cumA;
+                            } else {
+                              cumB += (b.runs || 0) + (b.extra || 0);
+                              overData[o].teamB = cumB;
+                            }
+                          });
+                          const chartData = Object.values(overData).sort(
+                            (a: any, b: any) => a.over - b.over,
+                          );
+
+                          return (
+                            <div className="bg-bg-secondary border border-white/5 rounded-3xl p-8 shadow-xl h-[400px] flex flex-col relative">
+                              <h4 className="text-center text-sm font-black uppercase tracking-widest text-text-dim mb-4 italic">
+                                Worm Chart (Cumulative Runs)
+                              </h4>
+                              <div className="flex-1 w-full min-h-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart
+                                    data={chartData}
+                                    margin={{
+                                      top: 10,
+                                      right: 10,
+                                      left: -20,
+                                      bottom: 0,
+                                    }}
+                                  >
+                                    <CartesianGrid
+                                      strokeDasharray="3 3"
+                                      stroke="rgba(255,255,255,0.05)"
+                                    />
+                                    <XAxis
+                                      dataKey="over"
+                                      stroke="rgba(255,255,255,0.3)"
+                                      tick={{
+                                        fill: "rgba(255,255,255,0.5)",
+                                        fontSize: 10,
+                                      }}
+                                    />
+                                    <YAxis
+                                      stroke="rgba(255,255,255,0.3)"
+                                      tick={{
+                                        fill: "rgba(255,255,255,0.5)",
+                                        fontSize: 10,
+                                      }}
+                                    />
+                                    <RechartsTooltip
+                                      contentStyle={{
+                                        backgroundColor: "#1A1A1A",
+                                        borderRadius: "1rem",
+                                        border:
+                                          "1px solid rgba(255,255,255,0.1)",
+                                      }}
+                                    />
+                                    <Line
+                                      type="monotone"
+                                      dataKey="teamA"
+                                      name={match.teamAName || "Team A"}
+                                      stroke="#E2FF00"
+                                      strokeWidth={3}
+                                      dot={false}
+                                    />
+                                    <Line
+                                      type="monotone"
+                                      dataKey="teamB"
+                                      name={match.teamBName || "Team B"}
+                                      stroke="#3b82f6"
+                                      strokeWidth={3}
+                                      dot={false}
+                                    />
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
+                          );
                         })()}
                       </div>
                     </div>
                   )}
-
                 </div>
               )}
 
@@ -3823,11 +3985,22 @@ function MatchSetupModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl overflow-y-auto">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl overflow-y-auto"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="fixed top-6 right-6 z-[110] p-4 bg-black/50 hover:bg-brand hover:text-black border border-white/10 hover:border-brand rounded-full text-white backdrop-blur-md transition-all shadow-2xl opacity-70 hover:opacity-100"
+      >
+        <X size={24} />
+      </button>
+
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 50 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-bg-secondary border border-white/10 rounded-[4rem] p-8 md:p-16 w-full max-w-4xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] relative my-8"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-bg-secondary border border-white/10 rounded-[4rem] p-8 md:p-16 w-full max-w-4xl shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] relative my-8 mt-24 md:mt-16"
       >
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-1 bg-gradient-to-r from-transparent via-brand to-transparent" />
 
@@ -4365,7 +4538,9 @@ function MatchesSection({
                   <div className="text-center">
                     <div className="text-xl sm:text-2xl font-black italic text-white tracking-tighter">
                       {match.score.teamA.runs}
-                      <span className="text-xs sm:text-sm text-brand mx-0.5">/</span>
+                      <span className="text-xs sm:text-sm text-brand mx-0.5">
+                        /
+                      </span>
                       {match.score.teamA.wickets}
                     </div>
                     <div className="text-[8px] sm:text-[9px] font-black text-text-dim uppercase tracking-[0.2em] italic mt-1">
@@ -4375,7 +4550,9 @@ function MatchesSection({
                   <div className="text-center">
                     <div className="text-xl sm:text-2xl font-black italic text-white tracking-tighter">
                       {match.score.teamB.runs}
-                      <span className="text-xs sm:text-sm text-brand mx-0.5">/</span>
+                      <span className="text-xs sm:text-sm text-brand mx-0.5">
+                        /
+                      </span>
                       {match.score.teamB.wickets}
                     </div>
                     <div className="text-[8px] sm:text-[9px] font-black text-text-dim uppercase tracking-[0.2em] italic mt-1">
@@ -4402,7 +4579,8 @@ function MatchesSection({
                     </>
                   ) : (
                     <>
-                      <BarChart2 size={14} className="sm:w-4 sm:h-4" /> Analytic Portal
+                      <BarChart2 size={14} className="sm:w-4 sm:h-4" /> Analytic
+                      Portal
                     </>
                   )}
                 </button>
@@ -4415,7 +4593,12 @@ function MatchesSection({
                   }}
                   className="w-full py-4 sm:py-5 bg-brand text-black rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] italic hover:bg-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_-10px_rgba(255,255,255,0.05)] flex items-center justify-center gap-2 sm:gap-3"
                 >
-                  <Play size={14} fill="currentColor" className="sm:w-4 sm:h-4" /> Initiate Scoring
+                  <Play
+                    size={14}
+                    fill="currentColor"
+                    className="sm:w-4 sm:h-4"
+                  />{" "}
+                  Initiate Scoring
                 </button>
               )}
               {match.status === "live" && (
@@ -4424,7 +4607,12 @@ function MatchesSection({
                     to={`/scoring/${match.id}`}
                     className="w-full py-4 sm:py-5 bg-brand text-black rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] italic hover:bg-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2 sm:gap-3 underline decoration-4 underline-offset-8"
                   >
-                    <Play size={14} fill="currentColor" className="sm:w-4 sm:h-4" /> {isOrganizer ? "Resume War Room" : "View Live Score"}
+                    <Play
+                      size={14}
+                      fill="currentColor"
+                      className="sm:w-4 sm:h-4"
+                    />{" "}
+                    {isOrganizer ? "Resume War Room" : "View Live Score"}
                   </Link>
                 </div>
               )}
@@ -4653,19 +4841,35 @@ function MatchesSection({
 
 function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
   // Orange Cap (Most Runs)
-  const allPlayers = teams.flatMap(t => t.players?.map((p: any) => ({ ...p, teamName: t.name })) || []);
-  
-  const orangeCap = [...allPlayers].sort((a,b) => (b.totalRuns || 0) - (a.totalRuns || 0)).slice(0,10);
-  const purpleCap = [...allPlayers].sort((a,b) => (b.totalWickets || 0) - (a.totalWickets || 0)).slice(0,10);
-  const highestStrikeRate = [...allPlayers].filter(p => (p.totalBallsFaced || 0) >= 10).sort((a,b) => (b.strikeRate || 0) - (a.strikeRate || 0)).slice(0,10);
-  const bestEconomy = [...allPlayers].filter(p => (p.totalBallsBowled || 0) >= 12).sort((a,b) => (a.economyRate || 99) - (b.economyRate || 99)).slice(0,10);
+  const allPlayers = teams.flatMap(
+    (t) => t.players?.map((p: any) => ({ ...p, teamName: t.name })) || [],
+  );
+
+  const orangeCap = [...allPlayers]
+    .sort((a, b) => (b.totalRuns || 0) - (a.totalRuns || 0))
+    .slice(0, 10);
+  const purpleCap = [...allPlayers]
+    .sort((a, b) => (b.totalWickets || 0) - (a.totalWickets || 0))
+    .slice(0, 10);
+  const highestStrikeRate = [...allPlayers]
+    .filter((p) => (p.totalBallsFaced || 0) >= 10)
+    .sort((a, b) => (b.strikeRate || 0) - (a.strikeRate || 0))
+    .slice(0, 10);
+  const bestEconomy = [...allPlayers]
+    .filter((p) => (p.totalBallsBowled || 0) >= 12)
+    .sort((a, b) => (a.economyRate || 99) - (b.economyRate || 99))
+    .slice(0, 10);
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="text-center">
         <Award size={48} className="mx-auto text-brand mb-4" />
-        <h2 className="text-3xl font-black uppercase italic text-white tracking-tighter">Tournament Awards</h2>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Top Performers</p>
+        <h2 className="text-3xl font-black uppercase italic text-white tracking-tighter">
+          Tournament Awards
+        </h2>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
+          Top Performers
+        </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -4676,18 +4880,34 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
           </h3>
           <div className="space-y-3 relative z-10">
             {orangeCap.map((p, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-500 flex items-center justify-center text-[10px] font-black italic">{i+1}</div>
+                  <div className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-500 flex items-center justify-center text-[10px] font-black italic">
+                    {i + 1}
+                  </div>
                   <div>
-                    <div className="font-bold text-white text-sm">{p.name || 'Unknown Player'}</div>
-                    <div className="text-[9px] uppercase tracking-widest text-text-dim">{p.teamName}</div>
+                    <div className="font-bold text-white text-sm">
+                      {p.name || "Unknown Player"}
+                    </div>
+                    <div className="text-[9px] uppercase tracking-widest text-text-dim">
+                      {p.teamName}
+                    </div>
                   </div>
                 </div>
-                <div className="text-xl font-black italic text-orange-500">{p.totalRuns || 0} <span className="text-[10px] text-text-dim">RUNS</span></div>
+                <div className="text-xl font-black italic text-orange-500">
+                  {p.totalRuns || 0}{" "}
+                  <span className="text-[10px] text-text-dim">RUNS</span>
+                </div>
               </div>
             ))}
-            {orangeCap.length === 0 && <div className="text-center text-text-dim py-4 text-xs">No data yet</div>}
+            {orangeCap.length === 0 && (
+              <div className="text-center text-text-dim py-4 text-xs">
+                No data yet
+              </div>
+            )}
           </div>
         </div>
 
@@ -4698,18 +4918,34 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
           </h3>
           <div className="space-y-3 relative z-10">
             {purpleCap.map((p, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-500 flex items-center justify-center text-[10px] font-black italic">{i+1}</div>
+                  <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-500 flex items-center justify-center text-[10px] font-black italic">
+                    {i + 1}
+                  </div>
                   <div>
-                    <div className="font-bold text-white text-sm">{p.name || 'Unknown Player'}</div>
-                    <div className="text-[9px] uppercase tracking-widest text-text-dim">{p.teamName}</div>
+                    <div className="font-bold text-white text-sm">
+                      {p.name || "Unknown Player"}
+                    </div>
+                    <div className="text-[9px] uppercase tracking-widest text-text-dim">
+                      {p.teamName}
+                    </div>
                   </div>
                 </div>
-                <div className="text-xl font-black italic text-purple-500">{p.totalWickets || 0} <span className="text-[10px] text-text-dim">WKTS</span></div>
+                <div className="text-xl font-black italic text-purple-500">
+                  {p.totalWickets || 0}{" "}
+                  <span className="text-[10px] text-text-dim">WKTS</span>
+                </div>
               </div>
             ))}
-            {purpleCap.length === 0 && <div className="text-center text-text-dim py-4 text-xs">No data yet</div>}
+            {purpleCap.length === 0 && (
+              <div className="text-center text-text-dim py-4 text-xs">
+                No data yet
+              </div>
+            )}
           </div>
         </div>
 
@@ -4720,18 +4956,33 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
           </h3>
           <div className="space-y-3 relative z-10">
             {highestStrikeRate.map((p, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-[10px] font-black italic">{i+1}</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-[10px] font-black italic">
+                    {i + 1}
+                  </div>
                   <div>
-                    <div className="font-bold text-white text-sm">{p.name || 'Unknown Player'}</div>
-                    <div className="text-[8px] uppercase tracking-widest text-text-dim">{p.totalRuns || 0} runs / {p.totalBallsFaced || 0} balls</div>
+                    <div className="font-bold text-white text-sm">
+                      {p.name || "Unknown Player"}
+                    </div>
+                    <div className="text-[8px] uppercase tracking-widest text-text-dim">
+                      {p.totalRuns || 0} runs / {p.totalBallsFaced || 0} balls
+                    </div>
                   </div>
                 </div>
-                <div className="text-lg font-black italic text-blue-500">{p.strikeRate || 0}</div>
+                <div className="text-lg font-black italic text-blue-500">
+                  {p.strikeRate || 0}
+                </div>
               </div>
             ))}
-            {highestStrikeRate.length === 0 && <div className="text-center text-text-dim py-4 text-xs">Min 10 balls faced</div>}
+            {highestStrikeRate.length === 0 && (
+              <div className="text-center text-text-dim py-4 text-xs">
+                Min 10 balls faced
+              </div>
+            )}
           </div>
         </div>
 
@@ -4742,18 +4993,35 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
           </h3>
           <div className="space-y-3 relative z-10">
             {bestEconomy.map((p, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center text-[10px] font-black italic">{i+1}</div>
+                  <div className="w-6 h-6 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center text-[10px] font-black italic">
+                    {i + 1}
+                  </div>
                   <div>
-                    <div className="font-bold text-white text-sm">{p.name || 'Unknown Player'}</div>
-                    <div className="text-[8px] uppercase tracking-widest text-text-dim">{p.totalRunsConceded || 0} runs / {Math.floor((p.totalBallsBowled||0)/6)}.{((p.totalBallsBowled||0)%6)} overs</div>
+                    <div className="font-bold text-white text-sm">
+                      {p.name || "Unknown Player"}
+                    </div>
+                    <div className="text-[8px] uppercase tracking-widest text-text-dim">
+                      {p.totalRunsConceded || 0} runs /{" "}
+                      {Math.floor((p.totalBallsBowled || 0) / 6)}.
+                      {(p.totalBallsBowled || 0) % 6} overs
+                    </div>
                   </div>
                 </div>
-                <div className="text-lg font-black italic text-green-500">{p.economyRate || 0}</div>
+                <div className="text-lg font-black italic text-green-500">
+                  {p.economyRate || 0}
+                </div>
               </div>
             ))}
-            {bestEconomy.length === 0 && <div className="text-center text-text-dim py-4 text-xs">Min 2 overs bowled</div>}
+            {bestEconomy.length === 0 && (
+              <div className="text-center text-text-dim py-4 text-xs">
+                Min 2 overs bowled
+              </div>
+            )}
           </div>
         </div>
       </div>
