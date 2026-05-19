@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: Remix: CricMaster Pro",
+  "description": "A comprehensive cricket tournament management and real-time scoring platform, tracking player stats and team performance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

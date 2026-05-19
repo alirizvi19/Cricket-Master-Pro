@@ -1,0 +1,248 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { 
+      return request.auth != null && request.auth.token.email_verified == true; 
+    }
+    
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function incoming() { 
+      return request.resource.data; 
+    }
+    
+    function existing() { 
+      return resource.data; 
+    }
+    
+    function isOwner(uid) { 
+      return isSignedIn() && request.auth.uid == uid; 
+    }
+
+    function isAdmin() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isSignedIn() && userDoc != null && userDoc.data.get('role', '') == 'admin';
+    }
+
+    // Relational Helpers
+    function isTournamentOfficial(tournamentId) {
+      let docSnap = get(/databases/$(database)/documents/tournaments/$(tournamentId));
+      return isSignedIn() && docSnap != null && (
+        docSnap.data.get('organizerId', '') == request.auth.uid || 
+        (docSnap.data.get('scorers', []).hasAny([request.auth.uid])) ||
+        (request.auth.uid in docSnap.data.get('scorers', {}))
+      );
+    }
+
+    function isTournamentOrganizer(tournamentId) {
+      let docSnap = get(/databases/$(database)/documents/tournaments/$(tournamentId));
+      return isSignedIn() && docSnap != null && docSnap.data.get('organizerId', '') == request.auth.uid;
+    }
+
+    function isTeamOrganizer(teamId) {
+      let docSnap = get(/databases/$(database)/documents/teams/$(teamId));
+      return docSnap != null && isTournamentOfficial(docSnap.data.get('tournamentId', ''));
+    }
+
+    function isMatchOrganizer(matchId) {
+      let docSnap = get(/databases/$(database)/documents/matches/$(matchId));
+      return docSnap != null && isTournamentOfficial(docSnap.data.get('tournamentId', ''));
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidUser(data) {
+      return data.uid == request.auth.uid &&
+             data.email == request.auth.token.email &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.role in ['user', 'admin'] &&
+             (!('age' in data) || (data.age is string && data.age.size() <= 3)) &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500));
+    }
+
+    function isValidTournament(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             data.organizerId == request.auth.uid &&
+             data.status in ['upcoming', 'ongoing', 'completed'] &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
+             (!('startDate' in data) || data.startDate is string) &&
+             (!('endDate' in data) || data.endDate is string) &&
+             (!('scorers' in data) || data.scorers is list) &&
+             (!('isPublic' in data) || data.isPublic is bool);
+    }
+
+    function isValidTeam(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             isValidId(data.tournamentId);
+    }
+
+    function isValidPlayer(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             isValidId(data.teamId) &&
+             data.role in ['batsman', 'bowler', 'all-rounder'] &&
+             (!('userId' in data) || isValidId(data.userId)) &&
+             (!('matchesPlayed' in data) || data.matchesPlayed is number) &&
+             (!('totalRuns' in data) || data.totalRuns is number) &&
+             (!('totalBallsFaced' in data) || data.totalBallsFaced is number) &&
+             (!('totalDismissals' in data) || data.totalDismissals is number) &&
+             (!('centuries' in data) || data.centuries is number) &&
+             (!('halfCenturies' in data) || data.halfCenturies is number) &&
+             (!('highestScore' in data) || data.highestScore is number) &&
+             (!('totalWickets' in data) || data.totalWickets is number) &&
+             (!('totalRunsConceded' in data) || data.totalRunsConceded is number) &&
+             (!('totalBallsBowled' in data) || data.totalBallsBowled is number) &&
+             (!('fiveWicketHauls' in data) || data.fiveWicketHauls is number) &&
+             (!('bestBowlingFigures' in data) || (data.bestBowlingFigures is string && data.bestBowlingFigures.size() <= 20)) &&
+             (!('strikeRate' in data) || data.strikeRate is number) &&
+             (!('economyRate' in data) || data.economyRate is number) &&
+             (!('battingAverage' in data) || data.battingAverage is number) &&
+             (!('bowlingAverage' in data) || data.bowlingAverage is number) &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 1000));
+    }
+
+    function isValidMatch(data) {
+      return isValidId(data.tournamentId) &&
+             isValidId(data.teamAId) &&
+             isValidId(data.teamBId) &&
+             data.status in ['scheduled', 'live', 'innings_completed', 'completed'] &&
+             (!('venue' in data) || (data.venue == null || (data.venue is string && data.venue.size() <= 100))) &&
+             (!('winnerId' in data) || (data.winnerId == null || isValidId(data.winnerId))) &&
+             (!('currentInnings' in data) || data.currentInnings is number) &&
+             (!('isFreeHit' in data) || data.isFreeHit is bool) &&
+             (!('maxOvers' in data) || data.maxOvers is number) &&
+             (!('teamAName' in data) || data.teamAName == null || data.teamAName is string) &&
+             (!('teamBName' in data) || data.teamBName == null || data.teamBName is string) &&
+             (!('battingTeamId' in data) || (data.battingTeamId == null || isValidId(data.battingTeamId))) &&
+             (!('battingTeamName' in data) || data.battingTeamName == null || data.battingTeamName is string) &&
+             (!('opponentTeamId' in data) || (data.opponentTeamId == null || isValidId(data.opponentTeamId))) &&
+             (!('opponentTeamName' in data) || data.opponentTeamName == null || data.opponentTeamName is string) &&
+             (!('currentBattingTeamId' in data) || (data.currentBattingTeamId == null || isValidId(data.currentBattingTeamId))) &&
+             (!('strikerId' in data) || (data.strikerId == null || isValidId(data.strikerId))) &&
+             (!('strikerName' in data) || (data.strikerName == null || data.strikerName is string)) &&
+             (!('strikerRole' in data) || (data.strikerRole == null || data.strikerRole is string)) &&
+             (!('strikerPhotoUrl' in data) || (data.strikerPhotoUrl == null || data.strikerPhotoUrl is string)) &&
+             (!('strikerRuns' in data) || data.strikerRuns == null || data.strikerRuns is number) &&
+             (!('strikerBalls' in data) || data.strikerBalls == null || data.strikerBalls is number) &&
+             (!('nonStrikerId' in data) || (data.nonStrikerId == null || isValidId(data.nonStrikerId))) &&
+             (!('nonStrikerName' in data) || (data.nonStrikerName == null || data.nonStrikerName is string)) &&
+             (!('nonStrikerRole' in data) || (data.nonStrikerRole == null || data.nonStrikerRole is string)) &&
+             (!('nonStrikerPhotoUrl' in data) || (data.nonStrikerPhotoUrl == null || data.nonStrikerPhotoUrl is string)) &&
+             (!('nonStrikerRuns' in data) || data.nonStrikerRuns == null || data.nonStrikerRuns is number) &&
+             (!('nonStrikerBalls' in data) || data.nonStrikerBalls == null || data.nonStrikerBalls is number) &&
+             (!('bowlerId' in data) || (data.bowlerId == null || isValidId(data.bowlerId))) &&
+             (!('bowlerName' in data) || (data.bowlerName == null || data.bowlerName is string)) &&
+             (!('bowlerRole' in data) || (data.bowlerRole == null || data.bowlerRole is string)) &&
+             (!('bowlerPhotoUrl' in data) || (data.bowlerPhotoUrl == null || data.bowlerPhotoUrl is string)) &&
+             (!('currentBowlerId' in data) || (data.currentBowlerId == null || isValidId(data.currentBowlerId))) &&
+             (!('score' in data) || data.score == null || data.score is map) &&
+             (!('battingFirst' in data) || data.battingFirst == null || data.battingFirst in ['teamA', 'teamB']);
+    }
+
+    function isValidBall(data) {
+       return data.runs >= 0 && data.runs <= 7 &&
+              (!('extraType' in data) || data.extraType == null || data.extraType in ['wide', 'nb', 'lb', 'bye']) &&
+              data.isWicket is bool;
+    }
+
+    function isValidInvitation(data) {
+      return isValidId(data.teamId) &&
+             isValidId(data.tournamentId) &&
+             data.invitedEmail is string && data.invitedEmail.size() <= 100 &&
+             data.status in ['pending', 'accepted', 'declined'];
+    }
+
+    function isValidJoinRequest(data) {
+      return isValidId(data.teamId) &&
+             isValidId(data.tournamentId) &&
+             data.userId == request.auth.uid &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             (!('userName' in data) || data.userName is string) &&
+             (!('userPhotoUrl' in data) || data.userPhotoUrl == null || data.userPhotoUrl is string) &&
+             (!('createdAt' in data) || data.createdAt is string);
+    }
+
+    // --- Collection Routes ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().role == 'user';
+      allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().role == existing().role;
+    }
+
+    match /tournaments/{tournamentId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && isValidTournament(incoming());
+      allow update: if (isOwner(existing().get('organizerId', '')) && isValidTournament(incoming()) && incoming().organizerId == existing().get('organizerId', '')) ||
+                    (isSignedIn() && 
+                     incoming().diff(existing()).affectedKeys().hasOnly(['scorers']) &&
+                     (
+                       (!('scorers' in existing()) && incoming().scorers == [request.auth.uid]) ||
+                       (('scorers' in existing()) && incoming().scorers.hasAll(existing().scorers) && incoming().scorers.size() == existing().scorers.size() + 1 && incoming().scorers.hasAny([request.auth.uid]))
+                     )
+                    );
+      allow delete: if isOwner(existing().get('organizerId', '')) || isAdmin();
+    }
+
+    match /teams/{teamId} {
+      allow get, list: if true;
+      allow create: if isTournamentOrganizer(incoming().get('tournamentId', '')) && isValidTeam(incoming());
+      allow update: if isTournamentOrganizer(existing().get('tournamentId', '')) && isValidTeam(incoming()) &&
+                    incoming().get('tournamentId', '') == existing().get('tournamentId', '');
+      allow delete: if isTournamentOrganizer(existing().get('tournamentId', '')) || isAdmin();
+    }
+
+    match /players/{playerId} {
+      allow get, list: if true;
+      allow create: if isTeamOrganizer(incoming().get('teamId', '')) && isValidPlayer(incoming());
+      allow update: if (isTeamOrganizer(existing().get('teamId', '')) || isOwner(existing().get('userId', ''))) && isValidPlayer(incoming()) &&
+                    incoming().get('teamId', '') == existing().get('teamId', '');
+      allow delete: if isTeamOrganizer(existing().get('teamId', '')) || isAdmin();
+    }
+
+    match /matches/{matchId} {
+      allow get, list: if true;
+      allow create: if isTournamentOfficial(incoming().get('tournamentId', '')) && isValidMatch(incoming());
+      allow update: if isTournamentOfficial(existing().get('tournamentId', '')) &&
+                    incoming().get('tournamentId', '') == existing().get('tournamentId', '');
+      allow delete: if isTournamentOfficial(existing().get('tournamentId', '')) || isAdmin();
+
+      match /balls/{ballId} {
+        allow get, list: if true;
+        allow create: if isMatchOrganizer(matchId) && isValidBall(incoming());
+        allow update: if isMatchOrganizer(matchId) && isValidBall(incoming());
+        allow delete: if isMatchOrganizer(matchId) || isAdmin();
+      }
+    }
+
+    match /invitations/{invitationId} {
+       allow get: if isSignedIn() && (request.auth.token.email == resource.data.get('invitedEmail', '') || isTournamentOrganizer(resource.data.get('tournamentId', '')));
+       allow list: if isSignedIn() && (request.auth.token.email == resource.data.get('invitedEmail', '') || isTournamentOrganizer(resource.data.get('tournamentId', '')));
+       allow create: if isTournamentOrganizer(incoming().get('tournamentId', '')) && isValidInvitation(incoming());
+       allow update: if isSignedIn() && (request.auth.token.email == existing().get('invitedEmail', '') || isTournamentOrganizer(existing().get('tournamentId', ''))) &&
+                     incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+                     incoming().status in ['accepted', 'declined'];
+    }
+
+    match /joinRequests/{requestId} {
+       allow get: if isSignedIn() && (isOwner(resource.data.get('userId', '')) || isTournamentOrganizer(resource.data.get('tournamentId', '')));
+       allow list: if isSignedIn() && (isOwner(resource.data.get('userId', '')) || isTournamentOrganizer(resource.data.get('tournamentId', '')));
+       allow create: if isSignedIn() && isValidJoinRequest(incoming());
+       allow update: if isSignedIn() && (isOwner(existing().get('userId', '')) || isTournamentOrganizer(existing().get('tournamentId', ''))) &&
+                     (
+                       (isOwner(existing().get('userId', '')) && incoming().diff(existing()).affectedKeys().hasOnly(['status']) && incoming().status == 'pending') ||
+                       (isTournamentOrganizer(existing().get('tournamentId', '')) && incoming().diff(existing()).affectedKeys().hasOnly(['status']) && incoming().status in ['approved', 'rejected'])
+                     );
+    }
+  }
+}

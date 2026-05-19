@@ -1,0 +1,173 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Tournament": {
+      "title": "Tournament",
+      "description": "Cricket tournament details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "organizerId": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "location": { "type": "string" },
+        "teams": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["upcoming", "ongoing", "completed"] }
+      },
+      "required": ["name", "organizerId", "status"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "Cricket team details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "players": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "tournamentId"]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "Player profile and global stats",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "teamId": { "type": "string" },
+        "role": { "type": "string", "enum": ["batsman", "bowler", "all-rounder"] },
+        "matchesPlayed": { "type": "number" },
+        "totalRuns": { "type": "number" },
+        "totalBallsFaced": { "type": "number" },
+        "totalDismissals": { "type": "number" },
+        "centuries": { "type": "number" },
+        "halfCenturies": { "type": "number" },
+        "highestScore": { "type": "number" },
+        "totalWickets": { "type": "number" },
+        "totalRunsConceded": { "type": "number" },
+        "totalBallsBowled": { "type": "number" },
+        "fiveWicketHauls": { "type": "number" },
+        "bestBowlingFigures": { "type": "string" },
+        "strikeRate": { "type": "number" },
+        "economyRate": { "type": "number" },
+        "battingAverage": { "type": "number" },
+        "bowlingAverage": { "type": "number" },
+        "photoUrl": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Match details and real-time score summary",
+      "type": "object",
+      "properties": {
+        "tournamentId": { "type": "string" },
+        "teamAId": { "type": "string" },
+        "teamBId": { "type": "string" },
+        "venue": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["scheduled", "live", "completed"] },
+        "currentScore": {
+          "type": "object",
+          "properties": {
+            "runs": { "type": "number" },
+            "wickets": { "type": "number" },
+            "overs": { "type": "number" },
+            "battingTeamId": { "type": "string" }
+          }
+        },
+        "winnerId": { "type": "string" }
+      },
+      "required": ["tournamentId", "teamAId", "teamBId", "status"]
+    },
+    "Ball": {
+      "title": "Ball",
+      "description": "Record of a single ball bowled",
+      "type": "object",
+      "properties": {
+        "matchId": { "type": "string" },
+        "inningsNo": { "type": "number" },
+        "over": { "type": "number" },
+        "ball": { "type": "number" },
+        "batsmanId": { "type": "string" },
+        "bowlerId": { "type": "string" },
+        "runs": { "type": "number" },
+        "extraRuns": { "type": "number" },
+        "isWicket": { "type": "boolean" },
+        "wicketType": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Invitation": {
+      "title": "Invitation",
+      "description": "Invitation for a user to join a team",
+      "type": "object",
+      "properties": {
+        "teamId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "invitedUserId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teamId", "invitedUserId", "status"]
+    },
+    "JoinRequest": {
+      "title": "JoinRequest",
+      "description": "Request from a user to join a team",
+      "type": "object",
+      "properties": {
+        "teamId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "userId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["teamId", "userId", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/tournaments/{tournamentId}": {
+      "schema": "Tournament",
+      "description": "Tournament records"
+    },
+    "/teams/{teamId}": {
+      "schema": "Team",
+      "description": "Team definitions"
+    },
+    "/players/{playerId}": {
+      "schema": "Player",
+      "description": "Player records"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Match summary"
+    },
+    "/matches/{matchId}/balls/{ballId}": {
+      "schema": "Ball",
+      "description": "Ball-by-ball events for a match"
+    },
+    "/invitations/{invitationId}": {
+      "schema": "Invitation",
+      "description": "Team invitations"
+    },
+    "/joinRequests/{requestId}": {
+      "schema": "JoinRequest",
+      "description": "Requests to join teams"
+    }
+  }
+}
