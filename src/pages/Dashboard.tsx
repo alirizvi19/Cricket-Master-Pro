@@ -91,11 +91,19 @@ export default function Dashboard() {
     try {
       const q = query(
         collection(db, 'tournaments'),
-        where('organizerId', '==', user?.uid),
-        orderBy('startDate', 'desc')
+        where('organizerId', '==', user?.uid)
       );
       const querySnapshot = await getDocs(q);
-      setTournaments(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const fetchedTournaments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Sort client-side to avoid composite index requirement
+      fetchedTournaments.sort((a: any, b: any) => {
+        const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+        const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+        return dateB - dateA;
+      });
+      
+      setTournaments(fetchedTournaments);
     } catch (err) {
       handleFirestoreError(err, OperationType.LIST, 'tournaments');
     } finally {
