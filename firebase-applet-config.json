@@ -1,10 +1,9 @@
 {
-  "projectId": "sanguine-post-7tgzl",
-  "appId": "1:238401594515:web:ed13b80d3f99fed9119966",
-  "apiKey": "AIzaSyAuOlScSnTODBzd4BsCLBPfvhDur74VhjY",
-  "authDomain": "sanguine-post-7tgzl.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-f5cc5f10-9ca0-4adf-b2b0-7351c503d3f0",
-  "storageBucket": "sanguine-post-7tgzl.firebasestorage.app",
-  "messagingSenderId": "238401594515",
-  "measurementId": ""
+  "projectId": "cricket-master-pro-28eaf",
+  "appId": "1:865411413379:web:e1801cbb2912088fb372b6",
+  "apiKey": "AIzaSyBYHkszrg_sP0Vf9C-4EY3etCfZk-CLK4Q",
+  "authDomain": "cricket-master-pro-28eaf.firebaseapp.com",
+  "storageBucket": "cricket-master-pro-28eaf.firebasestorage.app",
+  "messagingSenderId": "865411413379",
+  "measurementId": "G-BCBZVLLGV4"
 }
