@@ -31,7 +31,7 @@ export default function Auth() {
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email,
-          displayName: user.displayName,
+          displayName: user.displayName || user.email?.split('@')[0] || 'User',
           role: 'user',
           createdAt: new Date().toISOString(),
         });

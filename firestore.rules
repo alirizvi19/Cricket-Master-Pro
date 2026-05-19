@@ -8,7 +8,7 @@ service cloud.firestore {
 
     // --- Helpers ---
     function isSignedIn() { 
-      return request.auth != null && request.auth.token.email_verified == true; 
+      return request.auth != null; 
     }
     
     function isValidId(id) { 
@@ -62,11 +62,12 @@ service cloud.firestore {
     function isValidUser(data) {
       return data.uid == request.auth.uid &&
              data.email == request.auth.token.email &&
-             data.displayName is string && data.displayName.size() <= 100 &&
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
              data.role in ['user', 'admin'] &&
              (!('age' in data) || (data.age is string && data.age.size() <= 3)) &&
              (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
-             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500));
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
+             (!('createdAt' in data) || data.createdAt is string);
     }
 
     function isValidTournament(data) {
@@ -173,8 +174,7 @@ service cloud.firestore {
     // --- Collection Routes ---
 
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isAdmin();
+      allow read: if isSignedIn();
       allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().role == 'user';
       allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().role == existing().role;
     }

@@ -23,7 +23,7 @@ export function useAuth() {
           },
           (error) => {
             if (error.code !== 'unavailable' && !error.message.includes('offline')) {
-              console.error('Error fetching user role:', error);
+              console.error('Error fetching user role:\n' + error.message + '\nIf you just created this Firebase project, make sure you have initialized the Firestore Database in the Firebase Console.');
             }
           }
         );
