@@ -3,7 +3,7 @@ import { auth, db, handleFirestoreError, OperationType, storage } from '@/src/li
 import { useAuth } from '@/src/lib/hooks';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Camera, Save, User, Calendar, Mail, ArrowLeft } from 'lucide-react';
@@ -19,9 +19,12 @@ export default function Profile() {
     age: '',
     location: '',
     bio: '',
-    photoUrl: ''
+    photoUrl: '',
+    playerRole: ''
   });
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadMessage, setUploadMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -42,6 +45,7 @@ export default function Profile() {
           age: data.age || '',
           location: data.location || '',
           bio: data.bio || '',
+          playerRole: data.playerRole || '',
           photoUrl: user.photoURL || ''
         });
       } else {
@@ -63,25 +67,43 @@ export default function Profile() {
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
     setUploading(true);
-    try {
-      const storageRef = ref(storage, `users/${user.uid}/avatar`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      
-      await updateProfile(user, { photoURL: url });
-      await setDoc(doc(db, 'users', user.uid), { photoUrl: url }, { merge: true });
-      
-      setProfile(prev => ({ ...prev, photoUrl: url }));
-    } catch (err) {
-      console.error("Avatar upload failed:", err);
-    } finally {
-      setUploading(false);
-    }
+    setUploadProgress(0);
+    setUploadMessage(null);
+
+    const storageRef = ref(storage, `users/${user.uid}/avatar`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Avatar upload failed:", error);
+        setUploadMessage({ type: 'error', text: 'Upload failed. Please try again.' });
+        setUploading(false);
+      },
+      async () => {
+        try {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          await updateProfile(user, { photoURL: url });
+          await setDoc(doc(db, 'users', user.uid), { photoUrl: url }, { merge: true });
+          setProfile(prev => ({ ...prev, photoUrl: url }));
+          setUploadMessage({ type: 'success', text: 'Avatar updated successfully!' });
+        } catch (err) {
+          console.error("Error saving avatar URL:", err);
+          setUploadMessage({ type: 'error', text: 'Failed to save avatar URL.' });
+        } finally {
+          setUploading(false);
+        }
+      }
+    );
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -99,6 +121,7 @@ export default function Profile() {
         age: profile.age,
         location: profile.location,
         bio: profile.bio,
+        playerRole: profile.playerRole,
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
@@ -135,7 +158,10 @@ export default function Profile() {
             <div className="relative inline-block group">
               <div className="w-32 h-32 rounded-[2rem] bg-white/5 border-2 border-white/10 overflow-hidden flex items-center justify-center relative shadow-2xl">
                 {uploading ? (
-                  <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs font-bold text-brand">{uploadProgress}%</span>
+                  </div>
                 ) : profile.photoUrl ? (
                   <img src={profile.photoUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
@@ -147,6 +173,12 @@ export default function Profile() {
                 <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} />
               </label>
             </div>
+
+            {uploadMessage && (
+              <div className={`text-xs font-bold px-4 py-3 rounded-xl mt-2 inline-block ${uploadMessage.type === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                {uploadMessage.text}
+              </div>
+            )}
 
             <div>
               <h2 className="text-2xl font-black uppercase italic text-white tracking-tight">{profile.displayName || 'Anonymous'}</h2>
@@ -240,6 +272,20 @@ export default function Profile() {
                   className="w-full px-6 py-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:ring-2 focus:ring-brand transition-all font-bold placeholder:opacity-20"
                   placeholder="e.g. London, UK"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">Player Role</label>
+                <select
+                  value={profile.playerRole}
+                  onChange={(e) => setProfile({...profile, playerRole: e.target.value})}
+                  className="w-full px-6 py-4 bg-white/5 border border-white/5 rounded-2xl text-white outline-none focus:ring-2 focus:ring-brand transition-all font-bold appearance-none"
+                >
+                  <option value="" className="text-black">Select Role</option>
+                  <option value="Batsman" className="text-black">Batsman</option>
+                  <option value="Bowling" className="text-black">Bowling</option>
+                  <option value="All-rounder" className="text-black">All-rounder</option>
+                </select>
               </div>
 
               <div className="space-y-2">

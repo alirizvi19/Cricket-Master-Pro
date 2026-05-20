@@ -28,8 +28,13 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return isSignedIn() && userDoc != null && userDoc.data.get('role', '') == 'admin';
+      return isSignedIn() && (
+        (('email' in request.auth.token) && request.auth.token.email == 'ali.ammar.rizvi13@gmail.com') ||
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
+        )
+      );
     }
 
     // Relational Helpers
@@ -63,7 +68,7 @@ service cloud.firestore {
       return data.uid == request.auth.uid &&
              data.email == request.auth.token.email &&
              (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
-             data.role in ['user', 'admin'] &&
+             data.role in ['user', 'admin', 'scorer', 'viewer'] &&
              (!('age' in data) || (data.age is string && data.age.size() <= 3)) &&
              (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
              (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
@@ -174,63 +179,54 @@ service cloud.firestore {
     // --- Collection Routes ---
 
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().role == 'user';
-      allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().role == existing().role;
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isAdmin() || isOwner(userId);
+      allow delete: if isAdmin();
     }
 
     match /tournaments/{tournamentId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isAdmin() && isValidTournament(incoming());
-      allow update: if isAdmin() && (isOwner(existing().get('organizerId', '')) && isValidTournament(incoming()) && incoming().organizerId == existing().get('organizerId', '')) ||
-                    (isSignedIn() && 
-                     incoming().diff(existing()).affectedKeys().hasOnly(['scorers']) &&
-                     (
-                       (!('scorers' in existing()) && incoming().scorers == [request.auth.uid]) ||
-                       (('scorers' in existing()) && incoming().scorers.hasAll(existing().scorers) && incoming().scorers.size() == existing().scorers.size() + 1 && incoming().scorers.hasAny([request.auth.uid]))
-                     )
-                    );
-      allow delete: if isAdmin() && (isOwner(existing().get('organizerId', '')) || true);
+      allow create: if isSignedIn() && incoming().organizerId == request.auth.uid;
+      allow update: if isAdmin() || isOwner(existing().get('organizerId', '')) ||
+                    (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['scorers']));
+      allow delete: if isAdmin() || isOwner(existing().get('organizerId', ''));
     }
 
     match /teams/{teamId} {
       allow get, list: if true;
-      allow create: if isAdmin() && isTournamentOrganizer(incoming().get('tournamentId', '')) && isValidTeam(incoming());
-      allow update: if isAdmin() && isTournamentOrganizer(existing().get('tournamentId', '')) && isValidTeam(incoming()) &&
-                    incoming().get('tournamentId', '') == existing().get('tournamentId', '');
-      allow delete: if isAdmin();
+      allow create: if isAdmin() || isTournamentOrganizer(incoming().get('tournamentId', ''));
+      allow update: if isSignedIn(); 
+      allow delete: if isAdmin() || isTournamentOrganizer(existing().get('tournamentId', ''));
     }
 
     match /players/{playerId} {
       allow get, list: if true;
-      allow create: if isAdmin() && isTeamOrganizer(incoming().get('teamId', '')) && isValidPlayer(incoming());
-      allow update: if isAdmin() && (isTeamOrganizer(existing().get('teamId', '')) || isOwner(existing().get('userId', ''))) && isValidPlayer(incoming()) &&
-                    incoming().get('teamId', '') == existing().get('teamId', '');
-      allow delete: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || isTeamOrganizer(existing().get('teamId', '')) || isOwner(existing().get('userId', ''));
+      allow delete: if isAdmin() || isTeamOrganizer(existing().get('teamId', ''));
     }
 
     match /matches/{matchId} {
       allow get, list: if true;
-      allow create: if isAdmin() && isTournamentOfficial(incoming().get('tournamentId', '')) && isValidMatch(incoming());
-      allow update: if isAdmin() && isTournamentOfficial(existing().get('tournamentId', '')) &&
-                    incoming().get('tournamentId', '') == existing().get('tournamentId', '');
-      allow delete: if isAdmin();
+      allow create: if isAdmin() || isTournamentOfficial(incoming().get('tournamentId', ''));
+      allow update: if isAdmin() || isTournamentOfficial(existing().get('tournamentId', ''));
+      allow delete: if isAdmin() || isOwner(existing().get('organizerId', ''));
 
       match /balls/{ballId} {
         allow get, list: if true;
-        allow create: if isAdmin() && isMatchOrganizer(matchId) && isValidBall(incoming());
-        allow update: if isAdmin() && isMatchOrganizer(matchId) && isValidBall(incoming());
-        allow delete: if isAdmin();
+        allow create: if isAdmin() || isMatchOrganizer(matchId);
+        allow update: if isAdmin() || isMatchOrganizer(matchId);
+        allow delete: if isAdmin() || isMatchOrganizer(matchId);
       }
     }
 
     match /invitations/{invitationId} {
        allow read: if isSignedIn();
-       allow create: if isAdmin() && isTournamentOrganizer(incoming().get('tournamentId', '')) && isValidInvitation(incoming());
-       allow update: if isAdmin() && (request.auth.token.email == existing().get('invitedEmail', '') || isTournamentOrganizer(existing().get('tournamentId', ''))) &&
-                     incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
-                     incoming().status in ['accepted', 'declined'];
+       allow create: if isAdmin() || isTournamentOrganizer(incoming().get('tournamentId', ''));
+       allow update: if isAdmin() || isTournamentOrganizer(existing().get('tournamentId', '')) || request.auth.token.email == existing().get('invitedEmail', '');
     }
 
     match /joinRequests/{requestId} {

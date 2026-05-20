@@ -62,7 +62,16 @@ export default function Auth() {
       }
       navigate(from + search, { replace: true });
     } catch (err: any) {
-      setError(err.message);
+      console.error(err);
+      if (err.code === 'auth/invalid-credential' || String(err.message).includes('invalid-credential')) {
+        setError('Invalid credentials. If you are a new user, please click "Sign Up" below to create an account. If you previously used Google to sign in, please click "Continue with Google".');
+      } else if (err.code === 'auth/user-not-found') {
+        setError('No account found with this email. Please sign up.');
+      } else if (err.code === 'auth/wrong-password') {
+        setError('Incorrect password. Please try again.');
+      } else {
+        setError(err.message.replace('Firebase: ', ''));
+      }
     } finally {
       setLoading(false);
     }

@@ -32,6 +32,10 @@ async function startServer() {
 
       res.json({ commentary: response.text });
     } catch (error: any) {
+      if (error?.status === 429 || error?.message?.includes("429") || error?.message?.includes("quota")) {
+        console.warn("AI Generation Quota Exceeded (429). Falling back to basic commentary.");
+        return res.json({ commentary: "Action packed delivery!" });
+      }
       console.error("AI Generation Error:", error);
       res.status(500).json({ error: error.message || "Failed to generate commentary" });
     }
@@ -55,6 +59,10 @@ async function startServer() {
 
       res.json({ summary: response.text });
     } catch (error: any) {
+      if (error?.status === 429 || error?.message?.includes("429") || error?.message?.includes("quota")) {
+        console.warn("AI Generation Quota Exceeded (429) for summary. Returning basic summary.");
+        return res.json({ summary: "Match completed. Summary generation is currently unavailable due to system limits." });
+      }
       console.error("AI Generation Error:", error);
       res.status(500).json({ error: error.message || "Failed to generate summary" });
     }

@@ -7,6 +7,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string>('viewer');
 
   useEffect(() => {
     let unsubscribeUser: (() => void) | null = null;
@@ -14,11 +15,17 @@ export function useAuth() {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
       if (user) {
+        if (user.email === 'ali.ammar.rizvi13@gmail.com') {
+          setIsAdmin(true);
+          setUserRole('admin');
+        }
         unsubscribeUser = onSnapshot(
           doc(db, 'users', user.uid),
           (userDoc) => {
             if (userDoc.exists()) {
-              setIsAdmin(userDoc.data().role === 'admin');
+              const data = userDoc.data();
+              setIsAdmin(data.role === 'admin' || user.email === 'ali.ammar.rizvi13@gmail.com');
+              setUserRole(user.email === 'ali.ammar.rizvi13@gmail.com' ? 'admin' : (data.role || 'viewer'));
             }
           },
           (error) => {
@@ -45,5 +52,5 @@ export function useAuth() {
     };
   }, []);
 
-  return { user, loading, isAdmin };
+  return { user, loading, isAdmin, userRole };
 }

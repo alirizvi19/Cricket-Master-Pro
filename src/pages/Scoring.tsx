@@ -4,13 +4,13 @@ import { useAuth } from '@/src/lib/hooks';
 import { doc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, where, getDocs, increment } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, RotateCcw, Settings, User, AlertTriangle, Check, X, ChevronDown, Users, Share2, Activity, Trophy } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Settings, User, AlertTriangle, Check, X, ChevronDown, Users, Share2, Activity, Trophy, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Loading from '../components/Loading';
 
 export default function Scoring() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, isAdmin, userRole } = useAuth();
   const navigate = useNavigate();
   const [match, setMatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +36,7 @@ export default function Scoring() {
   const [bowlingSquad, setBowlingSquad] = useState<any[]>([]);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     if (match) {
@@ -295,7 +296,7 @@ export default function Scoring() {
           if (tSnap.exists()) {
             const tData = tSnap.data();
             setTournament(tData);
-            if (user.uid === tData.organizerId || (tData.scorers && tData.scorers.includes(user.uid))) {
+            if (isAdmin || userRole === 'scorer' || user.uid === tData.organizerId || (tData.scorers && tData.scorers.includes(user.uid))) {
               setIsAuthorized(true);
             }
           }
@@ -305,7 +306,7 @@ export default function Scoring() {
       };
       fetchTournament();
     }
-  }, [match?.tournamentId, user]);
+  }, [match?.tournamentId, user, isAdmin]);
 
   const recordBall = async (
     runs: number, 
@@ -651,11 +652,25 @@ export default function Scoring() {
     return `${protocol}//${shareableHost}${path}`;
   };
 
+  const shareLink = `/tournament/${match?.tournamentId}?liveMatchId=${id}`;
+
   const handleCopyLink = () => {
-    const link = getShareableUrl(`/tournament/${match.tournamentId}?liveMatchId=${id}`);
+    const link = getShareableUrl(shareLink);
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!match) return;
+    const link = getShareableUrl(shareLink);
+    
+    const isTeamABatting = match.currentBattingTeamId === match.teamAId;
+    const battingTeamKey = isTeamABatting ? 'teamA' : 'teamB';
+    const score = match.score?.[battingTeamKey] || { runs: 0, wickets: 0, overs: 0 };
+    
+    const text = `🏏 Follow Live Match: ${match.teamAName} vs ${match.teamBName}\n\nCurrent Score: ${score.runs}/${score.wickets} (${score.overs})\n\nWatch live ball-by-ball action here: ${link}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   return (
@@ -688,13 +703,13 @@ export default function Scoring() {
         </div>
         <div className="flex items-center gap-4">
           <button 
-            onClick={handleCopyLink}
+            onClick={() => setShowShareModal(true)}
             className="flex flex-col items-center gap-0.5 transition-all text-brand hover:text-white"
           >
             <motion.div whileTap={{ scale: 0.9 }}>
-              {copiedLink ? <Check size={18} /> : <Share2 size={18} />}
+              <Share2 size={18} />
             </motion.div>
-            <span className="text-[7px] font-black uppercase">{copiedLink ? 'Copied' : 'Live Link'}</span>
+            <span className="text-[7px] font-black uppercase">Share</span>
           </button>
           {isAuthorized && (
             <>
@@ -1433,6 +1448,61 @@ export default function Scoring() {
                   className="flex-1 py-3 bg-brand hover:bg-amber-400 text-black shadow-lg shadow-brand/20 rounded-xl font-bold uppercase text-[10px] tracking-widest disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                   {loading ? 'Finalizing...' : 'Finalize Match'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Share Modal */}
+      <AnimatePresence>
+        {showShareModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/95 backdrop-blur-xl"
+              onClick={() => setShowShareModal(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="relative bg-bg-secondary border border-white/10 rounded-[3rem] p-10 w-full max-w-sm shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] text-center space-y-8"
+            >
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="absolute top-6 right-6 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="w-24 h-24 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-2 border border-brand/20 shadow-inner">
+                <Share2 size={44} />
+              </div>
+              <div className="space-y-3">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white italic leading-tight">
+                  Share Live Link
+                </h2>
+                <p className="text-text-dim text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed max-w-[240px] mx-auto opacity-70">
+                  Share the live scorecard to fans & viewers without score-edit access.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 pt-2">
+                <button 
+                  onClick={handleWhatsAppShare}
+                  className="w-full py-4 bg-[#25D366] text-white rounded-2xl font-black uppercase italic tracking-widest hover:bg-[#128C7E] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-[#25D366]/20 flex items-center justify-center gap-2"
+                >
+                  <MessageCircle size={18} /> Share via WhatsApp
+                </button>
+                <button 
+                  onClick={handleCopyLink}
+                  className="w-full py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-black uppercase italic tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                >
+                  {copiedLink ? <Check size={18} className="text-brand" /> : <Share2 size={18} />}
+                  {copiedLink ? 'Link Copied!' : 'Copy Read-Only Link'}
                 </button>
               </div>
             </motion.div>

@@ -17,6 +17,7 @@ import TournamentDetail from './pages/TournamentDetail';
 import Scoring from './pages/Scoring';
 import Tournaments from './pages/Tournaments';
 import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -57,6 +58,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <Admin />
               </ProtectedRoute>
             } 
           />

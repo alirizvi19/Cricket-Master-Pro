@@ -82,7 +82,7 @@ const getShareableUrl = (path: string) => {
 
 export default function TournamentDetail() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, isAdmin, userRole } = useAuth();
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
@@ -372,8 +372,8 @@ export default function TournamentDetail() {
     }
   };
 
-  const isOrganizer = user?.uid === tournament.organizerId;
-  const isScorer = isOrganizer || tournament.scorers?.includes(user?.uid);
+  const isOrganizer = isAdmin || user?.uid === tournament?.organizerId;
+  const isScorer = isOrganizer || userRole === 'scorer' || tournament?.scorers?.includes(user?.uid);
 
   return (
     <div className="w-full space-y-6 sm:space-y-8 md:space-y-12 px-2 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-8 md:pb-12">
@@ -610,52 +610,7 @@ export default function TournamentDetail() {
         </div>
       )}
 
-      {/* Join Link Confirmation Modal */}
-      <AnimatePresence>
-        {joinConfirmation && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/95 backdrop-blur-xl"
-              onClick={() => setJoinConfirmation(null)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              className="relative bg-bg-secondary border border-white/10 rounded-[3rem] p-10 w-full max-w-sm shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] text-center space-y-8"
-            >
-              <div className="w-24 h-24 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-2 border border-brand/20 shadow-inner">
-                <Users size={44} />
-              </div>
-              <div className="space-y-3">
-                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white italic leading-tight">
-                  Join {joinConfirmation.teamName}?
-                </h2>
-                <p className="text-text-dim text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed max-w-[240px] mx-auto opacity-70">
-                  Send a request to the tournament organizer to join this squad.
-                </p>
-              </div>
-              <div className="flex flex-col gap-4 pt-2">
-                <button
-                  onClick={handleConfirmJoinLink}
-                  className="w-full py-4 bg-brand text-black rounded-2xl font-black uppercase italic tracking-widest hover:bg-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-brand/20"
-                >
-                  Send Join Request
-                </button>
-                <button
-                  onClick={() => setJoinConfirmation(null)}
-                  className="w-full py-4 text-[11px] font-black uppercase tracking-[0.3em] text-text-dim hover:text-white transition-colors"
-                >
-                  Maybe Later
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Empty Space preserved to keep formatting */}
 
       {/* Tournament Settings Modal */}
       <AnimatePresence>
@@ -758,54 +713,6 @@ export default function TournamentDetail() {
                   className="w-full py-4 bg-brand text-black rounded-2xl font-black uppercase italic tracking-widest text-[10px] hover:bg-white transition-all shadow-lg shadow-brand/20"
                 >
                   Save Changes
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Scorer Join Confirmation Modal */}
-      <AnimatePresence>
-        {showScorerJoinConfirmation && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/95 backdrop-blur-xl"
-              onClick={() => setShowScorerJoinConfirmation(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              className="relative bg-bg-secondary border border-white/10 rounded-[3rem] p-10 w-full max-w-sm shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] text-center space-y-8"
-            >
-              <div className="w-24 h-24 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-2 border border-brand/20 shadow-inner">
-                <Edit size={44} />
-              </div>
-              <div className="space-y-3">
-                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white italic leading-tight">
-                  Become a Scorer?
-                </h2>
-                <p className="text-text-dim text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed max-w-[240px] mx-auto opacity-70">
-                  Joining as a scorer for {tournament.name} will allow you to
-                  update match scores and ball-by-ball data.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 pt-2">
-                <button
-                  onClick={handleConfirmScorerJoin}
-                  className="w-full py-4 bg-brand text-black rounded-2xl font-black uppercase italic tracking-widest hover:bg-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-brand/20"
-                >
-                  Join as Scorer
-                </button>
-                <button
-                  onClick={() => setShowScorerJoinConfirmation(false)}
-                  className="w-full py-4 text-[10px] font-bold uppercase tracking-widest text-text-dim hover:text-white transition-colors"
-                >
-                  Cancel
                 </button>
               </div>
             </motion.div>
@@ -1762,27 +1669,6 @@ function TeamsSection({
                     <Trash2 size={16} />
                   </button>
                 </div>
-              )}
-              {!isOrganizer && user && (
-                <button
-                  onClick={() => handleJoinRequest(team.id)}
-                  disabled={userRequests.some(
-                    (r) =>
-                      r.teamId === team.id &&
-                      r.userId === user.uid &&
-                      r.status === "pending",
-                  )}
-                  className="px-6 py-3 bg-brand/10 hover:bg-brand text-brand hover:text-black transition-all rounded-xl text-[9px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed italic"
-                >
-                  {userRequests.some(
-                    (r) =>
-                      r.teamId === team.id &&
-                      r.userId === user.uid &&
-                      r.status === "pending",
-                  )
-                    ? "Request Pending"
-                    : "Join Unit"}
-                </button>
               )}
             </div>
 
@@ -4917,6 +4803,14 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
     .sort((a, b) => (a.economyRate || 99) - (b.economyRate || 99))
     .slice(0, 10);
 
+  const playerOfTournament = [...allPlayers]
+    .sort((a, b) => {
+      const scoreA = (a.totalRuns || 0) + (a.totalWickets || 0) * 25;
+      const scoreB = (b.totalRuns || 0) + (b.totalWickets || 0) * 25;
+      return scoreB - scoreA;
+    })
+    .slice(0, 5);
+
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="text-center">
@@ -4930,10 +4824,48 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
       </div>
 
       <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
+        <div className="bg-bg-secondary border border-yellow-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-yellow-500/20 transition-all rounded-full" />
+          <h3 className="text-lg font-black uppercase italic text-yellow-500 mb-6 flex items-center gap-2">
+            <Star size={20} /> Player of the Tournament
+          </h3>
+          <div className="space-y-3 relative z-10">
+            {playerOfTournament.map((p, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center text-[10px] font-black italic">
+                    {i + 1}
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-xs sm:text-sm">
+                      {p.name || "Unknown Player"}
+                    </div>
+                    <div className="text-[9px] uppercase tracking-widest text-text-dim">
+                      {p.teamName}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-lg sm:text-xl font-black italic text-yellow-500">
+                  <span className="text-[10px] text-text-dim mr-2">PTS</span>
+                  {((p.totalRuns || 0) + (p.totalWickets || 0) * 25).toFixed(0)}
+                </div>
+              </div>
+            ))}
+            {playerOfTournament.length === 0 && (
+              <div className="text-center text-text-dim py-4 text-xs">
+                No data yet
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="bg-bg-secondary border border-orange-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-orange-500/20 transition-all rounded-full" />
           <h3 className="text-lg font-black uppercase italic text-orange-500 mb-6 flex items-center gap-2">
-            <Trophy size={20} /> Orange Cap (Most Runs)
+            <Trophy size={20} /> Most Runs
           </h3>
           <div className="space-y-3 relative z-10">
             {orangeCap.map((p, i) => (
@@ -4971,7 +4903,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
         <div className="bg-bg-secondary border border-purple-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-purple-500/20 transition-all rounded-full" />
           <h3 className="text-lg font-black uppercase italic text-purple-500 mb-6 flex items-center gap-2">
-            <Medal size={20} /> Purple Cap (Most Wickets)
+            <Medal size={20} /> Most Wickets
           </h3>
           <div className="space-y-3 relative z-10">
             {purpleCap.map((p, i) => (

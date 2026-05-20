@@ -1,13 +1,13 @@
 // src/components/Layout.tsx
 import { auth } from '@/src/lib/firebase';
 import { useAuth } from '@/src/lib/hooks';
-import { Trophy, LogOut, User, Menu, X, PlusCircle, LayoutDashboard } from 'lucide-react';
+import { Trophy, LogOut, User, Menu, X, PlusCircle, LayoutDashboard, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -33,6 +33,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Link to="/tournaments" className="text-text-dim hover:text-white transition-colors">Tournaments</Link>
             {user && <Link to="/dashboard" className="text-text-dim hover:text-brand transition-colors flex items-center gap-2 italic">
               <LayoutDashboard size={14} /> Dashboard
+            </Link>}
+            {isAdmin && <Link to="/admin" className="text-brand hover:text-white transition-colors flex items-center gap-2 italic">
+              <Shield size={14} /> Admin
             </Link>}
             {user ? (
               <div className="flex items-center gap-4 border-l border-white/10 pl-8">
@@ -76,6 +79,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex flex-col gap-6 text-2xl font-bold uppercase italic">
               <Link to="/tournaments" onClick={() => setIsMenuOpen(false)}>Tournaments</Link>
               {user && <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>}
+              {isAdmin && <Link to="/admin" className="text-brand" onClick={() => setIsMenuOpen(false)}>Admin</Link>}
               {user && <Link to="/profile" onClick={() => setIsMenuOpen(false)}>Profile</Link>}
               {!user && <Link to="/login" onClick={() => setIsMenuOpen(false)}>Login</Link>}
               {user && <button onClick={handleLogout} className="text-left text-red-500">Logout</button>}
