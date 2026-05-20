@@ -17,7 +17,15 @@ export default function Scoring() {
   const [balls, setBalls] = useState<any[]>([]);
   const [tournament, setTournament] = useState<any>(null);
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [pendingBall, setPendingBall] = useState<{ runs: number, extraType: string | null, isWicket: boolean, region?: string | null } | null>(null);
+  const [pendingBall, setPendingBall] = useState<{ 
+    runs: number, 
+    extraType: string | null, 
+    isWicket: boolean, 
+    region?: string | null,
+    wicketType?: string | null,
+    fielderId?: string | null,
+    fielderName?: string | null
+  } | null>(null);
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
   const [showTeamSelector, setShowTeamSelector] = useState<{ type: 'batting' | 'opponent' } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -299,7 +307,15 @@ export default function Scoring() {
     }
   }, [match?.tournamentId, user]);
 
-  const recordBall = async (runs: number, extraType: string | null = null, isWicket: boolean = false, region: string | null = null) => {
+  const recordBall = async (
+    runs: number, 
+    extraType: string | null = null, 
+    isWicket: boolean = false, 
+    region: string | null = null,
+    wicketType: string | null = null,
+    fielderId: string | null = null,
+    fielderName: string | null = null
+  ) => {
     if (!match) return;
 
     const isTeamABatting = match.currentBattingTeamId === match.teamAId;
@@ -439,6 +455,9 @@ export default function Scoring() {
         extra: extraRuns,
         extraType: extraType || null,
         isWicket,
+        wicketType,
+        fielderId,
+        fielderName,
         isFreeHit: match.isFreeHit || false,
         timestamp: new Date().toISOString(),
         innings: match.currentInnings,
@@ -536,7 +555,7 @@ export default function Scoring() {
   };
 
   const handleRecordBall = (runs: number, extraType: string | null = null, isWicket: boolean = false) => {
-    if (isWicket || runs >= 4) {
+    if (isWicket) {
       setPendingBall({ runs, extraType, isWicket });
     } else {
       recordBall(runs, extraType, isWicket);
@@ -929,7 +948,7 @@ export default function Scoring() {
           <div className="bg-brand p-8 text-center space-y-4">
             <div className="flex flex-col items-center gap-2">
               <Trophy size={48} className="text-black" />
-              <h2 className="text-2xl font-black uppercase italic text-black tracking-tighter">
+              <h2 className="text-xl sm:text-2xl font-black uppercase italic text-black tracking-tighter">
                 {isMatchCompleted ? 'Match Completed' : 'Innings Completed'}
               </h2>
               <p className="text-black/60 text-[10px] font-black uppercase tracking-widest italic">
@@ -992,7 +1011,7 @@ export default function Scoring() {
                 <div className="w-16 h-16 bg-brand/10 text-brand rounded-[1.5rem] flex items-center justify-center mx-auto mb-2">
                   <User size={32} />
                 </div>
-                <h3 className="text-2xl font-black uppercase italic text-white tracking-tight">New Batsman</h3>
+                <h3 className="text-xl sm:text-2xl font-black uppercase italic text-white tracking-tight">New Batsman</h3>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Who is coming to bat next?</p>
               </div>
               <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
@@ -1029,12 +1048,12 @@ export default function Scoring() {
                 <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-[1.5rem] flex items-center justify-center mx-auto mb-2">
                   <Activity size={32} />
                 </div>
-                <h3 className="text-2xl font-black uppercase italic text-white tracking-tight">Select Bowler</h3>
+                <h3 className="text-xl sm:text-2xl font-black uppercase italic text-white tracking-tight">Select Bowler</h3>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim">Who will bowl the next over?</p>
               </div>
               <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                 {bowlingSquad
-                  .filter(p => p.id !== match.bowlerId)
+                  .filter(p => bowlingSquad.length > 1 ? p.id !== match.bowlerId : true)
                   .map(p => (
                     <button
                       key={p.id}
@@ -1149,6 +1168,45 @@ export default function Scoring() {
                 </p>
               </div>
 
+              {pendingBall.isWicket && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-text-dim block">Wicket Type</label>
+                    <select 
+                      value={pendingBall.wicketType || 'bowled'} 
+                      onChange={e => setPendingBall({ ...pendingBall, wicketType: e.target.value, fielderId: null, fielderName: null })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-black uppercase italic text-white outline-none focus:border-red-500 transition-all cursor-pointer"
+                    >
+                      <option value="bowled">Bowled</option>
+                      <option value="caught">Caught</option>
+                      <option value="lbw">LBW</option>
+                      <option value="run out">Run Out</option>
+                      <option value="stumped">Stumped</option>
+                      <option value="hit wicket">Hit Wicket</option>
+                    </select>
+                  </div>
+                  
+                  {['caught', 'run out', 'stumped'].includes(pendingBall.wicketType || 'bowled') && (
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-text-dim block">Select Fielder</label>
+                      <select 
+                        value={pendingBall.fielderId || ''} 
+                        onChange={e => {
+                          const fielder = bowlingSquad.find(p => p.id === e.target.value);
+                          setPendingBall({ ...pendingBall, fielderId: fielder?.id || null, fielderName: fielder?.name || null });
+                        }}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-black uppercase italic text-white outline-none focus:border-red-500 transition-all cursor-pointer"
+                      >
+                        <option value="">Select Fielder (Optional)</option>
+                        {bowlingSquad.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {!pendingBall.isWicket && pendingBall.runs > 0 && (
                 <div className="space-y-3">
                   <label className="text-[9px] font-black uppercase tracking-widest text-text-dim text-center block">Where was it hit? (Optional)</label>
@@ -1180,7 +1238,15 @@ export default function Scoring() {
                 </button>
                 <button 
                   onClick={() => {
-                    recordBall(pendingBall.runs, pendingBall.extraType, pendingBall.isWicket, pendingBall.region || null);
+                    recordBall(
+                      pendingBall.runs, 
+                      pendingBall.extraType, 
+                      pendingBall.isWicket, 
+                      pendingBall.region || null,
+                      pendingBall.wicketType || 'bowled',
+                      pendingBall.fielderId || null,
+                      pendingBall.fielderName || null
+                    );
                     setPendingBall(null);
                   }}
                   className={`flex-1 py-4 rounded-2xl font-black uppercase italic tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 ${pendingBall.isWicket ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-brand text-black hover:bg-white'}`}
@@ -1310,7 +1376,7 @@ export default function Scoring() {
                     }}
                     className="h-20 bg-[#F8F9FA] border border-black/5 rounded-2xl flex flex-col items-center justify-center group hover:bg-brand transition-all"
                   >
-                    <span className="text-2xl font-black italic text-[#343A40] group-hover:text-black">{run}</span>
+                    <span className="text-xl sm:text-2xl font-black italic text-[#343A40] group-hover:text-black">{run}</span>
                     <span className="text-[8px] font-black uppercase text-[#ADB5BD] group-hover:text-black/50">Runs</span>
                   </button>
                 ))}

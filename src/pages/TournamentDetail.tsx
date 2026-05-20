@@ -288,7 +288,7 @@ export default function TournamentDetail() {
           />
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-3xl font-black uppercase text-white italic tracking-tighter">
+          <h2 className="text-2xl sm:text-3xl font-black uppercase text-white italic tracking-tighter">
             Tournament Not Found
           </h2>
           <p className="text-text-dim text-[10px] font-bold uppercase tracking-[0.2em] max-w-[280px]">
@@ -400,7 +400,7 @@ export default function TournamentDetail() {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 sm:gap-8 relative z-10">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <h1 className="text-4xl md:text-6xl lg:text-8xl font-black uppercase tracking-tighter text-white italic leading-none break-words max-w-full">
+              <h1 className="text-[26px] leading-[30px] sm:text-4xl md:text-6xl lg:text-8xl font-black uppercase tracking-tighter text-white italic break-words max-w-full">
                 {tournament.name}
               </h1>
               <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
@@ -429,56 +429,57 @@ export default function TournamentDetail() {
           </div>
 
           {isOrganizer && (
-            <div className="flex flex-wrap gap-3">
-              <div className="flex p-2 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-xl">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              <div className="flex p-1 sm:p-2 bg-white/5 border border-white/5 rounded-2xl backdrop-blur-xl">
                 <button
                   onClick={() => setShowSettingsModal(true)}
                   title="Tournament Settings"
-                  className="p-3 text-text-dim hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                  className="p-2 sm:p-3 text-text-dim hover:text-white hover:bg-white/5 rounded-xl transition-all"
                 >
-                  <Settings size={20} />
+                  <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
-                <div className="w-[1px] h-full bg-white/5 mx-2" />
+                <div className="w-[1px] h-full bg-white/5 mx-1 sm:mx-2" />
                 {isOrganizer && (
                   <>
                     <button
                       onClick={handleExportToSheets}
                       disabled={isExporting}
                       title="Export to Google Sheets"
-                      className="p-3 text-emerald-400 hover:bg-emerald-400/10 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="p-2 sm:p-3 text-emerald-400 hover:bg-emerald-400/10 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 sm:gap-2"
                     >
-                      <FileSpreadsheet size={20} />
-                      <span className="hidden md:inline text-[10px] uppercase font-bold tracking-widest">
+                      <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="hidden md:inline text-[9px] sm:text-[10px] uppercase font-bold tracking-widest">
                         Export
                       </span>
                     </button>
-                    <div className="w-[1px] h-full bg-white/5 mx-2" />
+                    <div className="w-[1px] h-full bg-white/5 mx-1 sm:mx-2" />
                   </>
                 )}
                 <button
                   onClick={handleCopyLink}
                   title="Copy Scorer Joining Link"
-                  className="p-3 text-text-dim hover:text-brand transition-all"
+                  className="p-2 sm:p-3 text-text-dim hover:text-brand transition-all"
                 >
                   {copiedLink ? (
-                    <Check size={20} className="text-brand" />
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-brand" />
                   ) : (
-                    <Link2 size={20} />
+                    <Link2 className="w-4 h-4 sm:w-5 sm:h-5" />
                   )}
                 </button>
+                <div className="w-[1px] h-full bg-white/5 mx-1 sm:mx-2 hidden sm:block" />
                 <button
                   onClick={handleWhatsAppShare}
                   title="Share Scorer Link on WhatsApp"
-                  className="p-3 text-[#25D366] hover:bg-[#25D366]/5 rounded-xl transition-all"
+                  className="p-2 sm:p-3 text-[#25D366] hover:bg-[#25D366]/5 rounded-xl transition-all"
                 >
-                  <Share2 size={20} />
+                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
               <button
                 onClick={() => setShowTeamModal(true)}
-                className="bg-brand text-black px-10 py-5 rounded-2xl font-black uppercase italic tracking-widest text-[11px] flex items-center gap-3 hover:bg-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-brand/30"
+                className="bg-brand text-black px-6 py-4 sm:px-10 sm:py-5 rounded-2xl font-black uppercase italic tracking-widest text-[10px] sm:text-[11px] flex items-center gap-2 sm:gap-3 hover:bg-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-brand/30"
               >
-                <Plus size={18} strokeWidth={4} /> Register Team
+                <Plus className="w-4 h-4 sm:w-[18px] sm:h-[18px]" strokeWidth={4} /> Register Team
               </button>
             </div>
           )}
@@ -534,6 +535,7 @@ export default function TournamentDetail() {
             teams={teams}
             isOrganizer={isOrganizer}
             onAddPlayer={fetchTournamentData}
+            onAddTeam={() => setShowTeamModal(true)}
           />
         )}
         {activeTab === "matches" && (
@@ -569,7 +571,7 @@ export default function TournamentDetail() {
             >
               <X size={20} />
             </button>
-            <h2 className="text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
               Register New Team
             </h2>
             <form onSubmit={handleAddTeam} className="space-y-4">
@@ -629,7 +631,7 @@ export default function TournamentDetail() {
                 <Users size={44} />
               </div>
               <div className="space-y-3">
-                <h2 className="text-3xl font-black uppercase tracking-tighter text-white italic leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white italic leading-tight">
                   Join {joinConfirmation.teamName}?
                 </h2>
                 <p className="text-text-dim text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed max-w-[240px] mx-auto opacity-70">
@@ -666,7 +668,7 @@ export default function TournamentDetail() {
               className="bg-bg-secondary border border-white/10 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl space-y-6"
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black uppercase italic text-white tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black uppercase italic text-white tracking-tight">
                   Tournament Settings
                 </h2>
                 <button
@@ -784,7 +786,7 @@ export default function TournamentDetail() {
                 <Edit size={44} />
               </div>
               <div className="space-y-3">
-                <h2 className="text-3xl font-black uppercase tracking-tighter text-white italic leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white italic leading-tight">
                   Become a Scorer?
                 </h2>
                 <p className="text-text-dim text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed max-w-[240px] mx-auto opacity-70">
@@ -875,7 +877,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`px-8 py-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${active ? "border-brand text-brand" : "border-transparent text-text-dim hover:text-white"}`}
+      className={`px-4 py-3 sm:px-8 sm:py-4 flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 shrink-0 ${active ? "border-brand text-brand" : "border-transparent text-text-dim hover:text-white"}`}
     >
       {icon} {label}
     </button>
@@ -887,7 +889,7 @@ function InfoSection({ tournament, stats }: { tournament: any; stats: any }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10"
     >
       <div className="bg-bg-secondary border border-white/5 rounded-[2.5rem] p-6 sm:p-8 md:p-12 space-y-6 md:space-y-10 shadow-2xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -901,7 +903,7 @@ function InfoSection({ tournament, stats }: { tournament: any; stats: any }) {
             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim italic">
               Operational Base
             </h3>
-            <p className="text-2xl font-black italic text-white uppercase tracking-tighter">
+            <p className="text-xl sm:text-2xl font-black italic text-white uppercase tracking-tighter">
               {tournament.location}
             </p>
           </div>
@@ -914,7 +916,7 @@ function InfoSection({ tournament, stats }: { tournament: any; stats: any }) {
             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim italic">
               Deployment Date
             </h3>
-            <p className="text-2xl font-black italic text-white uppercase tracking-tighter">
+            <p className="text-xl sm:text-2xl font-black italic text-white uppercase tracking-tighter">
               {new Date(tournament.startDate).toLocaleDateString(undefined, {
                 dateStyle: "long",
               })}
@@ -935,7 +937,7 @@ function InfoSection({ tournament, stats }: { tournament: any; stats: any }) {
             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim italic">
               Registered Units
             </h3>
-            <p className="text-2xl font-black italic text-white uppercase tracking-tighter">
+            <p className="text-xl sm:text-2xl font-black italic text-white uppercase tracking-tighter">
               {stats.teams} Teams Active
             </p>
           </div>
@@ -948,7 +950,7 @@ function InfoSection({ tournament, stats }: { tournament: any; stats: any }) {
             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim italic">
               Battle Status
             </h3>
-            <p className="text-2xl font-black italic text-white uppercase tracking-tighter capitalize">
+            <p className="text-xl sm:text-2xl font-black italic text-white uppercase tracking-tighter capitalize">
               {tournament.status}
             </p>
           </div>
@@ -962,7 +964,7 @@ function InfoSection({ tournament, stats }: { tournament: any; stats: any }) {
           className="mx-auto text-brand animate-bounce group-hover:scale-110 transition-transform"
         />
         <div>
-          <h3 className="text-4xl font-black italic text-white uppercase tracking-tighter">
+          <h3 className="text-3xl sm:text-4xl font-black italic text-white uppercase tracking-tighter">
             Grand Prize
           </h3>
           <p className="text-[11px] font-bold uppercase tracking-[0.6em] text-brand mt-4 opacity-60">
@@ -1134,7 +1136,7 @@ function StandingsSection({
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <span className="text-sm sm:text-base font-black uppercase italic text-white tracking-tight group-hover:text-brand transition-colors">
+                        <span className="text-xs sm:text-base font-black uppercase italic text-white tracking-tight group-hover:text-brand transition-colors">
                           {team.name}
                         </span>
                         <div className="flex gap-2">
@@ -1186,7 +1188,7 @@ function StandingsSection({
               <div className="absolute inset-0 bg-brand/5 blur-2xl rounded-full" />
             </div>
             <div className="space-y-2">
-              <div className="text-xl font-black uppercase italic text-white tracking-tight">
+              <div className="text-lg sm:text-xl font-black uppercase italic text-white tracking-tight">
                 No Rankings Yet
               </div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-text-dim italic">
@@ -1204,10 +1206,12 @@ function TeamsSection({
   teams,
   isOrganizer,
   onAddPlayer,
+  onAddTeam,
 }: {
   teams: any[];
   isOrganizer: boolean;
   onAddPlayer: () => void;
+  onAddTeam?: () => void;
 }) {
   const [copiedTeamId, setCopiedTeamId] = useState<string | null>(null);
   const [showPlayerModal, setShowPlayerModal] = useState<string | null>(null);
@@ -1409,10 +1413,10 @@ function TeamsSection({
   };
 
   useEffect(() => {
-    if (user && teams.length > 0 && isOrganizer) {
+    if (user && teams.length > 0) {
       return fetchUserRequests();
     }
-  }, [user, teams, isOrganizer]);
+  }, [user, teams]);
 
   const fetchUserRequests = () => {
     try {
@@ -1477,9 +1481,12 @@ function TeamsSection({
     try {
       // In a real app, you'd search for the user by email first.
       // For this prototype, we'll just create an invitation.
+      const team = teams.find(t => t.id === showInviteModal);
+      if (!team) throw new Error("Team not found");
+      
       await addDoc(collection(db, "invitations"), {
         teamId: showInviteModal,
-        tournamentId: teams[0].tournamentId,
+        tournamentId: team.tournamentId,
         invitedEmail: inviteEmail,
         status: "pending",
         createdAt: new Date().toISOString(),
@@ -1590,11 +1597,13 @@ function TeamsSection({
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, `teams/${teamId}`);
       }
-
-      onAddPlayer();
+      
+      // Update local state if needed
+      if (onAddPlayer) onAddPlayer();
+      
     } catch (err) {
-      console.error("Photo upload error:", err);
-      // Storage errors are handled by log, but we could add a toast here if we had a toast library
+      console.error("Photo upload failed", err);
+      alert("Failed to upload photo. Please check your Firebase Storage settings and rules.");
     } finally {
       setUploadingPlayerId(null);
     }
@@ -1640,8 +1649,17 @@ function TeamsSection({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative group min-w-[220px]">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          {isOrganizer && onAddTeam && (
+            <button
+              onClick={onAddTeam}
+              className="w-full sm:w-auto px-6 py-3.5 bg-brand text-black rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-white transition-all transform hover:scale-[1.02] shadow-xl flex items-center justify-center gap-2"
+            >
+              <Plus size={14} strokeWidth={3} />
+              Add Team
+            </button>
+          )}
+          <div className="relative group w-full sm:min-w-[220px]">
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as any)}
@@ -1670,14 +1688,14 @@ function TeamsSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 3xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
+      <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
         {teams.map((team) => (
           <div
             key={team.id}
             className="bg-bg-secondary border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 shadow-xl group hover:border-brand/40 transition-all flex flex-col"
           >
-            <div className="flex items-center justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="space-y-1 overflow-hidden w-full sm:w-auto">
                 <h3 className="text-xl sm:text-2xl font-black uppercase text-white italic tracking-tighter truncate group-hover:text-brand transition-colors">
                   {team.name}
                 </h3>
@@ -1689,7 +1707,7 @@ function TeamsSection({
                 </div>
               </div>
               {isOrganizer && (
-                <div className="shrink-0 flex gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-md">
+                <div className="shrink-0 flex gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-md w-full sm:w-auto overflow-x-auto custom-scrollbar">
                   <button
                     onClick={() => {
                       setShowEditTeamModal(team);
@@ -2117,6 +2135,25 @@ function TeamsSection({
                 No players registered
               </p>
             )}
+
+            {isOrganizer && (
+              <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                <button
+                  onClick={() => setShowPlayerModal(team.id)}
+                  className="w-full py-3 border border-dashed border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest text-text-dim hover:text-brand hover:border-brand/40 hover:bg-brand/5 transition-all flex items-center justify-center gap-2"
+                >
+                  <UserPlus size={14} />
+                  Add New Player
+                </button>
+                <button
+                  onClick={() => setShowInviteModal(team.id)}
+                  className="w-full py-3 border border-dashed border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest text-text-dim hover:text-blue-400 hover:border-blue-400/40 hover:bg-blue-500/5 transition-all flex items-center justify-center gap-2"
+                >
+                  <Mail size={14} />
+                  Invite User
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -2129,7 +2166,7 @@ function TeamsSection({
             animate={{ opacity: 1, scale: 1 }}
             className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
           >
-            <h2 className="text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
               Add Player to Team
             </h2>
             <form onSubmit={handleAddPlayer} className="space-y-4">
@@ -2193,7 +2230,7 @@ function TeamsSection({
             animate={{ opacity: 1, scale: 1 }}
             className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
           >
-            <h2 className="text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
               Edit Team Name
             </h2>
             <form onSubmit={handleEditTeam} className="space-y-4">
@@ -2240,7 +2277,7 @@ function TeamsSection({
           >
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-white italic">
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white italic">
                   Player Statistics
                 </h2>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-brand mt-1">
@@ -2696,7 +2733,7 @@ function TeamsSection({
                 <Trash2 size={40} />
               </div>
               <div className="space-y-2">
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-white italic">
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white italic">
                   Delete Team?
                 </h2>
                 <p className="text-text-dim text-[10px] font-bold uppercase tracking-widest leading-relaxed">
@@ -2744,7 +2781,7 @@ function TeamsSection({
                 <UserMinus size={40} />
               </div>
               <div className="space-y-2">
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-white italic">
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-white italic">
                   Remove Player?
                 </h2>
                 <p className="text-text-dim text-[10px] font-bold uppercase tracking-widest leading-relaxed">
@@ -2791,7 +2828,7 @@ function TeamsSection({
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-sm shadow-2xl space-y-6"
             >
-              <h2 className="text-xl font-black uppercase mb-6 tracking-tighter text-white italic">
+              <h2 className="text-lg sm:text-xl font-black uppercase mb-6 tracking-tighter text-white italic">
                 Invite User
               </h2>
               <form onSubmit={handleInviteUser} className="space-y-4">
@@ -3043,7 +3080,7 @@ function MatchDetailsModal({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-1.5 h-10 bg-brand rounded-full" />
-              <h2 className="text-4xl font-black uppercase tracking-tighter text-white italic leading-none">
+              <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-white italic leading-none">
                 {match.status === "live"
                   ? "Live Match Center"
                   : "Match Analytics"}
@@ -3153,12 +3190,12 @@ function MatchDetailsModal({
                             <div className="text-[10px] font-black uppercase tracking-widest text-brand mb-1">
                               Innings {t.innings}
                             </div>
-                            <h3 className="text-3xl font-black uppercase text-white italic tracking-tight">
+                            <h3 className="text-2xl sm:text-3xl font-black uppercase text-white italic tracking-tight">
                               {t.name}
                             </h3>
                           </div>
                           <div className="text-right">
-                            <div className="text-4xl font-black italic text-white tracking-tighter">
+                            <div className="text-3xl sm:text-4xl font-black italic text-white tracking-tighter">
                               {t.score.runs}
                               <span className="text-brand text-2xl">/</span>
                               {t.score.wickets}
@@ -3330,18 +3367,18 @@ function MatchDetailsModal({
 
               {activeTab === "stats" && (
                 <div className="space-y-12">
-                  <div className="grid md:grid-cols-2 gap-12">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-12">
                     {[
                       { name: match.teamAName, stats: getMatchStats().teamA },
                       { name: match.teamBName, stats: getMatchStats().teamB },
                     ].map((t, idx) => (
                       <div key={idx} className="space-y-6">
-                        <h3 className="text-2xl font-black uppercase italic text-white border-b border-white/5 pb-2">
+                        <h3 className="text-xl sm:text-2xl font-black uppercase italic text-white border-b border-white/5 pb-2">
                           {t.name}
                         </h3>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="bg-white/5 p-4 rounded-3xl border border-white/5 text-center">
-                            <div className="text-2xl font-black text-brand italic">
+                            <div className="text-xl sm:text-2xl font-black text-brand italic">
                               {t.stats.dots}
                             </div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
@@ -3349,7 +3386,7 @@ function MatchDetailsModal({
                             </div>
                           </div>
                           <div className="bg-white/5 p-4 rounded-3xl border border-white/5 text-center">
-                            <div className="text-2xl font-black text-white italic">
+                            <div className="text-xl sm:text-2xl font-black text-white italic">
                               {t.stats.fours}
                             </div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
@@ -3357,7 +3394,7 @@ function MatchDetailsModal({
                             </div>
                           </div>
                           <div className="bg-white/5 p-4 rounded-3xl border border-white/5 text-center">
-                            <div className="text-2xl font-black text-white italic">
+                            <div className="text-xl sm:text-2xl font-black text-white italic">
                               {t.stats.sixes}
                             </div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
@@ -3365,7 +3402,7 @@ function MatchDetailsModal({
                             </div>
                           </div>
                           <div className="bg-white/5 p-4 rounded-3xl border border-white/5 text-center">
-                            <div className="text-2xl font-black text-brand italic">
+                            <div className="text-xl sm:text-2xl font-black text-brand italic">
                               {t.stats.totalExtras}
                             </div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
@@ -3450,7 +3487,7 @@ function MatchDetailsModal({
                                   Batting
                                 </div>
                                 <div className="flex items-baseline gap-1">
-                                  <span className="text-xl font-black italic text-white">
+                                  <span className="text-lg sm:text-xl font-black italic text-white">
                                     {p.batting.runs}
                                   </span>
                                   <span className="text-[10px] font-mono text-text-dim">
@@ -3474,7 +3511,7 @@ function MatchDetailsModal({
                                   Bowling
                                 </div>
                                 <div className="flex items-baseline gap-1">
-                                  <span className="text-xl font-black italic text-white">
+                                  <span className="text-lg sm:text-xl font-black italic text-white">
                                     {p.bowling.wickets}
                                   </span>
                                   <span className="text-xs font-black italic text-text-dim">
@@ -3515,7 +3552,7 @@ function MatchDetailsModal({
                           <Star size={24} />
                         </div>
                         <div>
-                          <h3 className="text-xl font-black uppercase tracking-tighter text-white italic">
+                          <h3 className="text-lg sm:text-xl font-black uppercase tracking-tighter text-white italic">
                             AI Match Summary
                           </h3>
                           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand/80">
@@ -3534,7 +3571,7 @@ function MatchDetailsModal({
                       size={48}
                       className="mx-auto text-brand mb-4 animate-bounce"
                     />
-                    <h3 className="text-3xl font-black uppercase italic text-white">
+                    <h3 className="text-2xl sm:text-3xl font-black uppercase italic text-white">
                       Impact Performers
                     </h3>
                     <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-text-dim">
@@ -3542,7 +3579,7 @@ function MatchDetailsModal({
                     </p>
                   </div>
 
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     {getMatchSummary().map((p, idx) => (
                       <motion.div
                         key={idx}
@@ -3567,7 +3604,7 @@ function MatchDetailsModal({
                         <div className="pt-4 border-t border-white/5 space-y-2">
                           {p.type === "batting" ? (
                             <>
-                              <div className="text-3xl font-black italic text-brand">
+                              <div className="text-2xl sm:text-3xl font-black italic text-brand">
                                 {p.runs}
                               </div>
                               <div className="text-[10px] font-mono text-text-dim">
@@ -3576,7 +3613,7 @@ function MatchDetailsModal({
                             </>
                           ) : (
                             <>
-                              <div className="text-3xl font-black italic text-blue-400">
+                              <div className="text-2xl sm:text-3xl font-black italic text-blue-400">
                                 {p.wickets}
                                 <span className="text-sm opacity-50 mx-1">
                                   W
@@ -3604,7 +3641,7 @@ function MatchDetailsModal({
                           size={48}
                           className="mx-auto text-blue-400 mb-4"
                         />
-                        <h3 className="text-3xl font-black uppercase italic text-white">
+                        <h3 className="text-2xl sm:text-3xl font-black uppercase italic text-white">
                           Data Visualizations
                         </h3>
                         <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-text-dim">
@@ -4018,7 +4055,7 @@ function MatchSetupModal({
           <div className="inline-block px-5 py-2 bg-brand/10 border border-brand/20 rounded-full text-[9px] font-black uppercase tracking-[0.6em] text-brand italic">
             Battle Authorization
           </div>
-          <h2 className="text-5xl md:text-6xl font-black uppercase tracking-tighter text-white italic leading-none">
+          <h2 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter text-white italic leading-none">
             Match Initialization
           </h2>
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-text-dim max-w-sm mx-auto leading-relaxed opacity-60 italic">
@@ -4026,7 +4063,7 @@ function MatchSetupModal({
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 md:gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-16">
           {/* Section 1: Team Selection */}
           <div className="space-y-12">
             <div className="space-y-6">
@@ -4427,7 +4464,7 @@ function MatchesSection({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white/5 p-4 px-6 rounded-2xl border border-white/5 shadow-inner">
-        <div className="flex items-center gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
           <div className="flex items-center gap-3">
             <Trophy size={14} className="text-brand" />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-dim italic">
@@ -4435,7 +4472,7 @@ function MatchesSection({
             </span>
           </div>
 
-          <div className="relative group min-w-[200px]">
+          <div className="relative group w-full sm:min-w-[200px]">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -4469,7 +4506,7 @@ function MatchesSection({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 3xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
+      <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
         {filteredMatches.map((match) => (
           <div
             key={match.id}
@@ -4639,7 +4676,7 @@ function MatchesSection({
         <div className="flex flex-col items-center justify-center p-6 sm:p-8 md:p-12 bg-white/5 border border-white/5 rounded-[2.5rem] text-center space-y-6 shadow-inner">
           <Calendar size={48} className="text-brand opacity-80" />
           <div className="space-y-2 max-w-md">
-            <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">
+            <h3 className="text-xl sm:text-2xl font-black uppercase italic text-white tracking-tighter">
               No Matches Yet
             </h3>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim leading-relaxed">
@@ -4696,7 +4733,7 @@ function MatchesSection({
             >
               <X size={20} />
             </button>
-            <h2 className="text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
               Schedule Match
             </h2>
             {matchError && (
@@ -4828,7 +4865,7 @@ function MatchesSection({
               <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-2">
                 <AlertTriangle size={32} />
               </div>
-              <h3 className="text-xl font-black italic text-white uppercase tracking-tight">
+              <h3 className="text-lg sm:text-xl font-black italic text-white uppercase tracking-tight">
                 Delete Match?
               </h3>
               <p className="text-sm font-medium text-text-dim">
@@ -4862,7 +4899,7 @@ function MatchesSection({
 function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
   // Orange Cap (Most Runs)
   const allPlayers = teams.flatMap(
-    (t) => t.players?.map((p: any) => ({ ...p, teamName: t.name })) || [],
+    (t) => (t.fullPlayers || t.players)?.map((p: any) => ({ ...p, teamName: t.name })) || [],
   );
 
   const orangeCap = [...allPlayers]
@@ -4872,11 +4909,11 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
     .sort((a, b) => (b.totalWickets || 0) - (a.totalWickets || 0))
     .slice(0, 10);
   const highestStrikeRate = [...allPlayers]
-    .filter((p) => (p.totalBallsFaced || 0) >= 10)
+    .filter((p) => (p.totalBallsFaced || 0) > 0)
     .sort((a, b) => (b.strikeRate || 0) - (a.strikeRate || 0))
     .slice(0, 10);
   const bestEconomy = [...allPlayers]
-    .filter((p) => (p.totalBallsBowled || 0) >= 12)
+    .filter((p) => (p.totalBallsBowled || 0) > 0)
     .sort((a, b) => (a.economyRate || 99) - (b.economyRate || 99))
     .slice(0, 10);
 
@@ -4884,7 +4921,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="text-center">
         <Award size={48} className="mx-auto text-brand mb-4" />
-        <h2 className="text-3xl font-black uppercase italic text-white tracking-tighter">
+        <h2 className="text-[20px] leading-[24px] sm:text-3xl font-black uppercase italic text-white tracking-tighter">
           Tournament Awards
         </h2>
         <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
@@ -4892,7 +4929,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
         <div className="bg-bg-secondary border border-orange-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-orange-500/20 transition-all rounded-full" />
           <h3 className="text-lg font-black uppercase italic text-orange-500 mb-6 flex items-center gap-2">
@@ -4909,7 +4946,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
                     {i + 1}
                   </div>
                   <div>
-                    <div className="font-bold text-white text-sm">
+                    <div className="font-bold text-white text-xs sm:text-sm">
                       {p.name || "Unknown Player"}
                     </div>
                     <div className="text-[9px] uppercase tracking-widest text-text-dim">
@@ -4917,7 +4954,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
                     </div>
                   </div>
                 </div>
-                <div className="text-xl font-black italic text-orange-500">
+                <div className="text-lg sm:text-xl font-black italic text-orange-500">
                   {p.totalRuns || 0}{" "}
                   <span className="text-[10px] text-text-dim">RUNS</span>
                 </div>
@@ -4947,7 +4984,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
                     {i + 1}
                   </div>
                   <div>
-                    <div className="font-bold text-white text-sm">
+                    <div className="font-bold text-white text-xs sm:text-sm">
                       {p.name || "Unknown Player"}
                     </div>
                     <div className="text-[9px] uppercase tracking-widest text-text-dim">
@@ -4955,7 +4992,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
                     </div>
                   </div>
                 </div>
-                <div className="text-xl font-black italic text-purple-500">
+                <div className="text-lg sm:text-xl font-black italic text-purple-500">
                   {p.totalWickets || 0}{" "}
                   <span className="text-[10px] text-text-dim">WKTS</span>
                 </div>
@@ -4985,7 +5022,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
                     {i + 1}
                   </div>
                   <div>
-                    <div className="font-bold text-white text-sm">
+                    <div className="font-bold text-white text-xs sm:text-sm">
                       {p.name || "Unknown Player"}
                     </div>
                     <div className="text-[8px] uppercase tracking-widest text-text-dim">
@@ -5022,7 +5059,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
                     {i + 1}
                   </div>
                   <div>
-                    <div className="font-bold text-white text-sm">
+                    <div className="font-bold text-white text-xs sm:text-sm">
                       {p.name || "Unknown Player"}
                     </div>
                     <div className="text-[8px] uppercase tracking-widest text-text-dim">

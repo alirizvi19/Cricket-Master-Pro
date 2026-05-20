@@ -9,7 +9,7 @@ import { motion } from 'motion/react';
 import Loading from '../components/Loading';
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,12 +158,14 @@ export default function Dashboard() {
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-white italic">My Dashboard</h1>
           <p className="text-text-dim text-sm sm:text-base font-medium">Manage your tournaments, teams and player performance</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="w-full md:w-auto justify-center bg-brand text-black px-6 py-4 rounded-xl font-bold uppercase tracking-widest text-[10px] sm:text-xs flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-brand/20"
-        >
-          <Plus size={16} className="sm:w-[18px] sm:h-[18px]" /> Create Tournament
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-full md:w-auto justify-center bg-brand text-black px-6 py-4 rounded-xl font-bold uppercase tracking-widest text-[10px] sm:text-xs flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-brand/20"
+          >
+            <Plus size={16} className="sm:w-[18px] sm:h-[18px]" /> Create Tournament
+          </button>
+        )}
       </header>
 
       {/* Stats Summary */}
@@ -224,12 +226,21 @@ export default function Dashboard() {
           <div className="py-12 sm:py-20 text-center bg-white/5 border-2 border-dashed border-white/5 rounded-3xl px-4">
             <Trophy size={48} className="mx-auto text-white/5 mb-4" />
             <p className="text-text-dim font-medium">No tournaments created yet</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="mt-4 text-brand font-bold flex items-center gap-1 mx-auto hover:gap-2 transition-all uppercase text-[10px] tracking-widest"
-            >
-              Get Started <ArrowRight size={14} />
-            </button>
+            {isAdmin ? (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="mt-4 text-brand font-bold flex items-center gap-1 mx-auto hover:gap-2 transition-all uppercase text-[10px] tracking-widest"
+              >
+                Get Started <ArrowRight size={14} />
+              </button>
+            ) : (
+              <Link
+                to="/tournaments"
+                className="mt-4 text-brand font-bold flex items-center gap-1 mx-auto hover:gap-2 transition-all uppercase text-[10px] tracking-widest"
+              >
+                Browse Tournaments <ArrowRight size={14} />
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
@@ -248,7 +259,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-bg-secondary rounded-3xl p-6 sm:p-8 w-full max-w-md border border-white/10"
           >
-            <h2 className="text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">New Tournament</h2>
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">New Tournament</h2>
             <form onSubmit={handleCreateTournament} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">Tournament Name</label>
@@ -304,7 +315,7 @@ function StatCard({ icon, label, value, color = "bg-bg-secondary text-white" }: 
         {icon}
         <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
       </div>
-      <div className="text-3xl font-black italic tracking-tighter">{value}</div>
+      <div className="text-2xl sm:text-3xl font-black italic tracking-tighter">{value}</div>
     </div>
   );
 }
@@ -336,7 +347,7 @@ function TournamentCard({ tournament, onDelete }: { tournament: any, onDelete: (
               </div>
             </div>
             
-            <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-white italic group-hover:text-brand transition-colors leading-none">{tournament.name}</h3>
+            <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tighter mb-2 text-white italic group-hover:text-brand transition-colors leading-none">{tournament.name}</h3>
             <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.2em] mb-8 text-text-dim/60">
                <MapPin size={12} className="text-brand/40" />
                {tournament.location}

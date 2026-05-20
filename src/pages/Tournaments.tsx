@@ -61,7 +61,7 @@ export default function Tournaments() {
                   </div>
                </div>
                <div className="p-6 sm:p-8 space-y-4">
-                  <h3 className="text-2xl font-black italic uppercase tracking-tight text-white">{t.name}</h3>
+                  <h3 className="text-xl sm:text-2xl font-black italic uppercase tracking-tight text-white">{t.name}</h3>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-[10px] font-mono uppercase text-text-dim tracking-widest italic">
                       <MapPin size={14} className="text-brand" /> {t.location}
