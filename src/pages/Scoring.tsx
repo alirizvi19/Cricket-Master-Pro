@@ -306,7 +306,7 @@ export default function Scoring() {
       };
       fetchTournament();
     }
-  }, [match?.tournamentId, user, isAdmin]);
+  }, [match?.tournamentId, user, isAdmin, userRole]);
 
   const recordBall = async (
     runs: number, 

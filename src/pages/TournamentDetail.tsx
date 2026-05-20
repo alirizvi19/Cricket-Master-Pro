@@ -1595,6 +1595,73 @@ function TeamsSection({
         </div>
       </div>
 
+      {isOrganizer && userRequests.filter((r) => r.status === "pending").length > 0 && (
+        <div className="bg-brand/5 border border-brand/20 rounded-3xl p-6 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-brand/10 border border-brand/30 rounded-2xl flex items-center justify-center text-brand">
+              <User size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black uppercase text-brand tracking-widest italic">
+                Pending Join Requests
+              </h3>
+              <p className="text-[10px] uppercase text-text-dim tracking-widest font-bold">
+                Approve or reject team enrollments
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {userRequests
+              .filter((r) => r.status === "pending")
+              .map((req) => {
+                const teamName = teams.find(t => t.id === req.teamId)?.name || 'Unknown Team';
+                return (
+                  <div
+                    key={req.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between bg-white/[0.03] p-4 rounded-xl border border-white/5 gap-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 overflow-hidden flex items-center justify-center border border-white/10 shrink-0">
+                        {req.userPhotoUrl ? (
+                          <img
+                            src={req.userPhotoUrl}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User size={16} className="text-text-dim" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-xs text-white font-black italic uppercase tracking-tight block truncate">
+                          {req.userName}
+                        </span>
+                        <span className="text-[10px] text-text-dim uppercase tracking-widest font-bold">
+                          Joining: <span className="text-brand">{teamName}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => handleApproveRequest(req)}
+                        className="flex-1 sm:flex-none px-4 py-2 bg-brand/10 hover:bg-brand text-brand hover:text-black rounded-lg transition-colors font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
+                      >
+                        <Check size={14} /> Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectRequest(req.id)}
+                        className="flex-1 sm:flex-none px-4 py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-colors font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
+                      >
+                        <X size={14} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
         {teams.map((team) => (
           <div
@@ -1671,63 +1738,6 @@ function TeamsSection({
                 </div>
               )}
             </div>
-
-            {isOrganizer &&
-              userRequests.filter(
-                (r) => r.teamId === team.id && r.status === "pending",
-              ).length > 0 && (
-                <div className="bg-brand/5 rounded-2xl p-6 space-y-4 border border-brand/10 border-dashed mb-4">
-                  <div className="flex items-center gap-2">
-                    <User size={12} className="text-brand" />
-                    <span className="text-[10px] font-black uppercase text-brand tracking-[0.2em] italic">
-                      Pending Enrollment
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {userRequests
-                      .filter(
-                        (r) => r.teamId === team.id && r.status === "pending",
-                      )
-                      .map((req) => (
-                        <div
-                          key={req.id}
-                          className="flex items-center justify-between bg-white/[0.03] p-3 rounded-xl border border-white/5"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-white/5 overflow-hidden flex items-center justify-center border border-white/10">
-                              {req.userPhotoUrl ? (
-                                <img
-                                  src={req.userPhotoUrl}
-                                  alt=""
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <User size={14} className="text-text-dim" />
-                              )}
-                            </div>
-                            <span className="text-[11px] text-white font-black italic uppercase tracking-tight">
-                              {req.userName}
-                            </span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleApproveRequest(req)}
-                              className="p-2 hover:bg-brand hover:text-black rounded-lg transition-colors text-brand"
-                            >
-                              <Check size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleRejectRequest(req.id)}
-                              className="p-2 hover:bg-red-500 hover:text-white rounded-lg transition-colors text-red-500"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
 
             {isOrganizer &&
               invitations.filter(
@@ -4146,6 +4156,7 @@ function MatchesSection({
 }) {
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
+  const [editCompletedMatch, setEditCompletedMatch] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [teamA, setTeamA] = useState("");
   const [teamB, setTeamB] = useState("");
@@ -4549,6 +4560,35 @@ function MatchesSection({
                   </Link>
                 </div>
               )}
+              {match.status === "completed" && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  {isOrganizer ? (
+                    <button
+                      onClick={() => setEditCompletedMatch(match)}
+                      className="w-full py-4 sm:py-5 bg-white/10 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] italic hover:bg-white/20 transition-all flex items-center justify-center gap-2 sm:gap-3 border border-white/10"
+                    >
+                      <Play
+                        size={14}
+                        fill="currentColor"
+                        className="sm:w-4 sm:h-4"
+                      />{" "}
+                      Edit Match Score
+                    </button>
+                  ) : (
+                    <Link
+                      to={`/scoring/${match.id}`}
+                      className="w-full py-4 sm:py-5 bg-white/10 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] italic hover:bg-white/20 transition-all flex items-center justify-center gap-2 sm:gap-3 border border-white/10"
+                    >
+                      <Play
+                        size={14}
+                        fill="currentColor"
+                        className="sm:w-4 sm:h-4"
+                      />{" "}
+                      View Match Details
+                    </Link>
+                  )}
+                </div>
+              )}
               {match.status === "scheduled" && !isOrganizer && (
                 <div className="w-full py-5 text-center bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.5em] text-text-dim/50 italic">
                   Match Scheduled
@@ -4732,6 +4772,104 @@ function MatchesSection({
                   className="flex-1 py-3 bg-brand text-black rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-white transition-all shadow-lg hover:shadow-brand/20 active:scale-[0.98]"
                 >
                   Schedule
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Completed Match Modal */}
+      {editCompletedMatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+          >
+            <button
+              onClick={() => setEditCompletedMatch(null)}
+              className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-xl text-text-dim hover:text-white transition-all"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
+              Edit Match Score
+            </h2>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setIsDeleting(true);
+                try {
+                  const tA = editCompletedMatch.teamAId;
+                  const tB = editCompletedMatch.teamBId;
+                  
+                  const targetScore = {
+                    teamA: {
+                      runs: Number((e.target as any).teamARuns.value),
+                      wickets: Number((e.target as any).teamAWickets.value),
+                      overs: Number((e.target as any).teamAOvers.value),
+                    },
+                    teamB: {
+                      runs: Number((e.target as any).teamBRuns.value),
+                      wickets: Number((e.target as any).teamBWickets.value),
+                      overs: Number((e.target as any).teamBOvers.value),
+                    }
+                  };
+                  
+                  let winnerId = null;
+                  if (targetScore.teamA.runs > targetScore.teamB.runs) {
+                    winnerId = tA;
+                  } else if (targetScore.teamB.runs > targetScore.teamA.runs) {
+                    winnerId = tB;
+                  }
+
+                  await updateDoc(doc(db, "matches", editCompletedMatch.id), {
+                    score: targetScore,
+                    winnerId: winnerId,
+                  });
+                  onUpdate();
+                  setEditCompletedMatch(null);
+                } catch (err) {
+                  console.error(err);
+                  alert("Failed to update score");
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <h3 className="text-[12px] font-black uppercase tracking-widest text-brand">{editCompletedMatch.teamAName}</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <input type="number" name="teamARuns" placeholder="Runs" defaultValue={editCompletedMatch.score.teamA.runs} required className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand" />
+                  <input type="number" name="teamAWickets" placeholder="Wickets" defaultValue={editCompletedMatch.score.teamA.wickets} required className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand" />
+                  <input type="number" step="0.1" name="teamAOvers" placeholder="Overs" defaultValue={editCompletedMatch.score.teamA.overs} required className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand" />
+                </div>
+              </div>
+              <div className="space-y-2 pt-4 border-t border-white/5">
+                <h3 className="text-[12px] font-black uppercase tracking-widest text-brand">{editCompletedMatch.teamBName}</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <input type="number" name="teamBRuns" placeholder="Runs" defaultValue={editCompletedMatch.score.teamB.runs} required className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand" />
+                  <input type="number" name="teamBWickets" placeholder="Wickets" defaultValue={editCompletedMatch.score.teamB.wickets} required className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand" />
+                  <input type="number" step="0.1" name="teamBOvers" placeholder="Overs" defaultValue={editCompletedMatch.score.teamB.overs} required className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand" />
+                </div>
+              </div>
+              
+              <div className="flex gap-4 pt-4 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setEditCompletedMatch(null)}
+                  className="flex-1 py-3 border border-white/10 rounded-xl font-bold uppercase text-[10px] tracking-widest text-white hover:bg-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isDeleting}
+                  className="flex-1 py-3 bg-brand text-black rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-white transition-all shadow-lg hover:shadow-brand/20 disabled:opacity-50"
+                >
+                  Save Score
                 </button>
               </div>
             </form>
