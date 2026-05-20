@@ -235,13 +235,7 @@ export default function TournamentDetail() {
           setTeams(teamsData);
         }
 
-        // Fetch matches
-        const matchesQ = query(
-          collection(db, "matches"),
-          where("tournamentId", "==", id),
-        );
-        const matchesSnap = await getDocs(matchesQ);
-        setMatches(matchesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        // We will fetch matches via real-time listener in a separate useEffect
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.GET, `tournaments/${id}`);
@@ -249,6 +243,20 @@ export default function TournamentDetail() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!id) return;
+    const matchesQ = query(
+      collection(db, "matches"),
+      where("tournamentId", "==", id),
+    );
+    const unsubscribe = onSnapshot(matchesQ, (snap) => {
+      setMatches(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (err) => {
+      console.error("Error listening to matches:", err);
+    });
+    return () => unsubscribe();
+  }, [id]);
 
   const [isAddingTeam, setIsAddingTeam] = useState(false);
 
