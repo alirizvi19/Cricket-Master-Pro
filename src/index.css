@@ -36,4 +36,9 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-border-main) var(--color-bg-main);
   }
+
+  select option {
+    background-color: var(--color-bg-secondary);
+    color: white;
+  }
 }

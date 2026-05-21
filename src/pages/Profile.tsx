@@ -7,7 +7,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Camera, Save, User, Calendar, Mail, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import Loading from '../components/Loading';
 
 export default function Profile() {
@@ -27,10 +27,13 @@ export default function Profile() {
   const [uploadMessage, setUploadMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     if (user) {
       fetchProfile();
+    } else {
+      setLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const [playerStats, setPlayerStats] = useState<any>(null);
 
@@ -135,6 +138,10 @@ export default function Profile() {
 
   if (authLoading || loading) return <Loading />;
 
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 sm:space-y-8 md:space-y-12 px-4 sm:px-6 md:px-8 pt-16 md:pt-24 pb-8 md:pb-12">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
@@ -156,19 +163,32 @@ export default function Profile() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 blur-3xl rounded-full -mr-16 -mt-16" />
             
             <div className="relative inline-block group">
-              <div className="w-32 h-32 rounded-[2rem] bg-white/5 border-2 border-white/10 overflow-hidden flex items-center justify-center relative shadow-2xl">
+              {/* Outer glowing background ring */}
+              <div className="absolute inset-0 bg-brand/20 rounded-[2.2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              <div className="w-32 h-32 rounded-[2rem] bg-slate-900 border-2 border-white/10 group-hover:border-brand/60 overflow-hidden flex items-center justify-center relative shadow-2xl transition-all duration-300 ring-4 ring-black/20 group-hover:shadow-[0_0_25px_rgba(235,254,100,0.25)]">
                 {uploading ? (
                   <div className="flex flex-col items-center justify-center gap-2">
                     <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-bold text-brand">{uploadProgress}%</span>
+                    <span className="text-sm font-black italic text-brand font-mono">{uploadProgress}%</span>
                   </div>
                 ) : profile.photoUrl ? (
-                  <img src={profile.photoUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={profile.photoUrl} alt="Avatar" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
                 ) : (
-                  <User size={48} className="text-white/10" />
+                  <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-brand/5 to-brand/20">
+                    <img 
+                      src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256&h=256" 
+                      alt="Default Sport Profile Avatar" 
+                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/20 transition-all duration-300">
+                      <User size={36} className="text-brand filter drop-shadow" />
+                    </div>
+                  </div>
                 )}
               </div>
-              <label className="absolute -bottom-2 -right-2 p-3 bg-brand text-black rounded-xl cursor-pointer hover:scale-110 transition-transform shadow-lg shadow-brand/20">
+              <label className="absolute -bottom-2 -right-2 p-3 bg-brand hover:bg-white text-black rounded-xl cursor-pointer hover:scale-110 transition-transform shadow-lg shadow-brand/25 border border-brand/10 transition-colors">
                 <Camera size={18} />
                 <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} />
               </label>

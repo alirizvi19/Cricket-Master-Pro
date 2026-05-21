@@ -4,6 +4,40 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cricket Master Pro</title>
+    <script>
+      (function() {
+        try {
+          // Keep track of the active fetch function, starting with the original one
+          let activeFetch = window.fetch || globalThis.fetch;
+          
+          const patchObj = (obj) => {
+            try {
+              Object.defineProperty(obj, 'fetch', {
+                get() {
+                  return activeFetch;
+                },
+                set(v) {
+                  activeFetch = v;
+                },
+                configurable: true,
+                enumerable: true
+              });
+            } catch (err) {
+              console.warn('Unable to define fetch property getter/setter on:', obj, err);
+            }
+          };
+
+          if (typeof window !== 'undefined') {
+            patchObj(window);
+          }
+          if (typeof globalThis !== 'undefined') {
+            patchObj(globalThis);
+          }
+        } catch (e) {
+          console.error('Fetch getter/setter polyfill initialization failed:', e);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

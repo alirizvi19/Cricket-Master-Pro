@@ -50,6 +50,7 @@ import {
   Award,
   Target,
   Medal,
+  Crown,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import {
@@ -63,6 +64,14 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  BarChart,
+  Bar,
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
 } from "recharts";
 import { motion, AnimatePresence } from "motion/react";
 import Loading from "../components/Loading";
@@ -98,6 +107,9 @@ export default function TournamentDetail() {
     useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamShortName, setNewTeamShortName] = useState("");
+  const [newTeamLogoUrl, setNewTeamLogoUrl] = useState("");
+  const [newTeamColor, setNewTeamColor] = useState("#98D22C");
   const [isExporting, setIsExporting] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -268,15 +280,29 @@ export default function TournamentDetail() {
     try {
       const teamRef = await addDoc(collection(db, path), {
         name: newTeamName,
+        shortName: newTeamShortName.trim() || null,
+        logoUrl: newTeamLogoUrl.trim() || null,
+        primaryColor: newTeamColor || null,
         tournamentId: id,
         players: [],
         createdAt: new Date().toISOString(),
       });
       setTeams([
         ...teams,
-        { id: teamRef.id, name: newTeamName, tournamentId: id, players: [] },
+        { 
+          id: teamRef.id, 
+          name: newTeamName, 
+          shortName: newTeamShortName.trim() || null,
+          logoUrl: newTeamLogoUrl.trim() || null,
+          primaryColor: newTeamColor || null,
+          tournamentId: id, 
+          players: [] 
+        },
       ]);
       setNewTeamName("");
+      setNewTeamShortName("");
+      setNewTeamLogoUrl("");
+      setNewTeamColor("#98D22C");
       setShowTeamModal(false);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, path);
@@ -596,6 +622,65 @@ export default function TournamentDetail() {
                   required
                 />
               </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-1 space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                    Abbr.
+                  </label>
+                  <input
+                    type="text"
+                    value={newTeamShortName}
+                    onChange={(e) => setNewTeamShortName(e.target.value.toUpperCase().slice(0, 5))}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand text-center"
+                    placeholder="RCB"
+                  />
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                    Team Logo URL
+                  </label>
+                  <input
+                    type="url"
+                    value={newTeamLogoUrl}
+                    onChange={(e) => setNewTeamLogoUrl(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2 block">
+                  Primary Brand Color
+                </label>
+                <div className="flex flex-wrap gap-2.5 px-2">
+                  {[
+                    "#98D22C", // Brand Lime
+                    "#3B82F6", // Blue
+                    "#EF4444", // Red
+                    "#F59E0B", // Amber
+                    "#10B981", // Emerald
+                    "#EC4899", // Pink
+                    "#8B5CF6", // Violet
+                    "#14B8A6", // Teal
+                  ].map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewTeamColor(color)}
+                      className={`w-7 h-7 rounded-full border-2 transition-all ${
+                        newTeamColor === color
+                          ? "scale-110 border-white"
+                          : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
               <div className="flex gap-4 pt-4">
                 <button
                   type="button"
@@ -1013,8 +1098,115 @@ function StandingsSection({
     </th>
   );
 
+  const chartData = sortedStandings.map((t) => ({
+    name: t.name,
+    Points: t.points,
+    NRR: Number(t.nrr.toFixed(3)),
+  }));
+
   return (
     <div className="space-y-6">
+      {sortedStandings.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-bg-secondary p-6 sm:p-8 rounded-[2.5rem] border border-white/5 shadow-2xl backdrop-blur-xl space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-widest text-white italic flex items-center gap-2">
+                📊 Standings Analytics
+              </h3>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-text-dim mt-0.5">
+                Comparing Points and Net Run Rate (NRR) of Units
+              </p>
+            </div>
+          </div>
+          <div className="w-full h-[240px] pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={{ top: 20, right: 10, left: 10, bottom: 20 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255, 255, 255, 0.05)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="name"
+                  stroke="#AEB5BD"
+                  fontSize={9}
+                  fontWeight="900"
+                  tickLine={false}
+                  axisLine={false}
+                  dy={10}
+                />
+                <YAxis
+                  yAxisId="left"
+                  orientation="left"
+                  stroke="#E2FF00"
+                  fontSize={9}
+                  fontWeight="900"
+                  tickLine={false}
+                  axisLine={false}
+                  domain={[0, "auto"]}
+                  allowDecimals={false}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#38BDF8"
+                  fontSize={9}
+                  fontWeight="900"
+                  tickLine={false}
+                  axisLine={false}
+                  domain={["auto", "auto"]}
+                />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: "#1A1A1A",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "1rem",
+                    fontSize: "11px",
+                    fontFamily: "monospace",
+                  }}
+                  itemStyle={{
+                    color: "#fff",
+                  }}
+                  labelClassName="text-white/60 font-bold uppercase mb-1"
+                />
+                <Legend
+                  verticalAlign="top"
+                  height={36}
+                  wrapperStyle={{
+                    fontSize: "10px",
+                    fontWeight: "900",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    paddingBottom: "10px",
+                  }}
+                />
+                <Bar
+                  yAxisId="left"
+                  dataKey="Points"
+                  fill="#E2FF00"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={30}
+                />
+                <Bar
+                  yAxisId="right"
+                  dataKey="NRR"
+                  fill="#38BDF8"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={30}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      )}
+
       <div className="bg-bg-secondary rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -1032,9 +1224,11 @@ function StandingsSection({
             </thead>
             <tbody className="divide-y divide-white/5">
               {sortedStandings.map((team, idx) => (
-                <tr
+                <motion.tr
+                  layout
                   key={team.id}
-                  className="group hover:bg-white/[0.02] transition-all"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="group hover:bg-white/[0.02] transition-colors"
                 >
                   <td className="p-3 sm:py-8 sm:px-10">
                     <span
@@ -1045,15 +1239,37 @@ function StandingsSection({
                   </td>
                   <td className="p-3 sm:py-8 sm:px-4">
                     <div className="flex items-center gap-6">
-                      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 p-0.5 group-hover:border-brand/40 transition-colors hidden sm:block">
-                        <div className="w-full h-full rounded-[1.125rem] bg-bg-main flex items-center justify-center text-xl font-black italic text-brand">
-                          {team.name.charAt(0)}
-                        </div>
+                      <div 
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border border-white/10 p-0.5 group-hover:border-brand/40 transition-all hidden sm:flex"
+                        style={{ backgroundColor: team.primaryColor ? `${team.primaryColor}15` : '#98D22C15', borderColor: team.primaryColor || '#98D22C' }}
+                      >
+                        {team.logoUrl ? (
+                          <img 
+                            src={team.logoUrl} 
+                            alt={team.name} 
+                            className="w-full h-full object-cover rounded-[1.125rem]" 
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span 
+                            className="text-lg font-black uppercase italic"
+                            style={{ color: team.primaryColor || '#98D22C' }}
+                          >
+                            {team.shortName || team.name.slice(0, 2)}
+                          </span>
+                        )}
                       </div>
                       <div className="space-y-1">
-                        <span className="text-xs sm:text-base font-black uppercase italic text-white tracking-tight group-hover:text-brand transition-colors">
-                          {team.name}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-base font-black uppercase italic text-white tracking-tight group-hover:text-brand transition-colors">
+                            {team.name}
+                          </span>
+                          {team.shortName && (
+                            <span className="text-[9px] font-black uppercase italic px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/60">
+                              {team.shortName}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex gap-2">
                           <span className="text-[8px] font-bold text-text-dim uppercase tracking-widest">
                             {team.fullPlayers?.length || 0} Players
@@ -1091,7 +1307,7 @@ function StandingsSection({
                       {team.points}
                     </span>
                   </td>
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>
@@ -1154,6 +1370,9 @@ function TeamsSection({
   } | null>(null);
   const [showEditTeamModal, setShowEditTeamModal] = useState<any | null>(null);
   const [editTeamName, setEditTeamName] = useState("");
+  const [editTeamShortName, setEditTeamShortName] = useState("");
+  const [editTeamLogoUrl, setEditTeamLogoUrl] = useState("");
+  const [editTeamColor, setEditTeamColor] = useState("#98D22C");
   const [showStatsModal, setShowStatsModal] = useState<any | null>(null);
   const [statsForm, setStatsForm] = useState({
     matchesPlayed: 0,
@@ -1208,6 +1427,9 @@ function TeamsSection({
       // Update team document
       await updateDoc(doc(db, "teams", teamId), {
         name: newName,
+        shortName: editTeamShortName.trim() || null,
+        logoUrl: editTeamLogoUrl.trim() || null,
+        primaryColor: editTeamColor || null,
       });
 
       // Update match documents where this team is involved (denormalized name cache)
@@ -1480,6 +1702,15 @@ function TeamsSection({
     }
   };
 
+  const handleMakeCaptain = async (teamId: string, playerId: string) => {
+    try {
+      await updateDoc(doc(db, "teams", teamId), { captainId: playerId });
+      if (onAddPlayer) onAddPlayer();
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `teams/${teamId}`);
+    }
+  };
+
   const handlePhotoUpload = async (
     playerId: string,
     teamId: string,
@@ -1677,15 +1908,49 @@ function TeamsSection({
             className="bg-bg-secondary border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 shadow-xl group hover:border-brand/40 transition-all flex flex-col"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="space-y-1 overflow-hidden w-full sm:w-auto">
-                <h3 className="text-xl sm:text-2xl font-black uppercase text-white italic tracking-tighter truncate group-hover:text-brand transition-colors">
-                  {team.name}
-                </h3>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-brand" />
-                  <span className="text-[10px] font-bold text-text-dim uppercase tracking-widest italic">
-                    {team.players?.length || 0} Registered Players
-                  </span>
+              <div className="flex items-center gap-4 w-full sm:w-auto overflow-hidden">
+                {/* Team Branding Logo / Avatar */}
+                <div 
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border border-white/10"
+                  style={{ backgroundColor: team.primaryColor ? `${team.primaryColor}15` : '#98D22C15', borderColor: team.primaryColor || '#98D22C' }}
+                >
+                  {team.logoUrl ? (
+                    <img 
+                      src={team.logoUrl} 
+                      alt={team.name} 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span 
+                      className="text-lg sm:text-xl font-black uppercase italic"
+                      style={{ color: team.primaryColor || '#98D22C' }}
+                    >
+                      {team.shortName || team.name.slice(0, 2)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1 overflow-hidden">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xl sm:text-2xl font-black uppercase text-white italic tracking-tighter truncate group-hover:text-brand transition-colors">
+                      {team.name}
+                    </h3>
+                    {team.shortName && (
+                      <span className="text-[10px] font-black uppercase italic px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60">
+                        {team.shortName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div 
+                      className="w-1.5 h-1.5 rounded-full" 
+                      style={{ backgroundColor: team.primaryColor || '#98D22C' }}
+                    />
+                    <span className="text-[10px] font-bold text-text-dim uppercase tracking-widest italic">
+                      {team.players?.length || 0} Registered Players
+                    </span>
+                  </div>
                 </div>
               </div>
               {isOrganizer && (
@@ -1694,6 +1959,9 @@ function TeamsSection({
                     onClick={() => {
                       setShowEditTeamModal(team);
                       setEditTeamName(team.name);
+                      setEditTeamShortName(team.shortName || "");
+                      setEditTeamLogoUrl(team.logoUrl || "");
+                      setEditTeamColor(team.primaryColor || "#98D22C");
                     }}
                     className="p-2.5 hover:bg-white/10 text-white/40 hover:text-white transition-all rounded-xl"
                     title="Edit Team"
@@ -1815,7 +2083,7 @@ function TeamsSection({
                           onClick={toggleExpand}
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
-                            <div className="relative">
+                            <div className="relative group/avatar">
                               <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative shadow-inner">
                                 {uploadingPlayerId === p.id ? (
                                   <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
@@ -1830,18 +2098,45 @@ function TeamsSection({
                                   <User size={20} className="text-white/20" />
                                 )}
                               </div>
+                              {isOrganizer && (
+                                <label 
+                                  className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center rounded-2xl cursor-pointer transition-all"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Upload Photo"
+                                >
+                                  <Camera size={14} className="text-brand" />
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file)
+                                        handlePhotoUpload(p.id, team.id, file);
+                                    }}
+                                  />
+                                </label>
+                              )}
                             </div>
                             <div className="flex flex-col">
                               <span className="truncate font-black italic text-sm group-hover/name:text-brand transition-colors">
                                 {p.name}
                               </span>
-                              <div className="flex items-center gap-2 opacity-60">
-                                <div
-                                  className={`shrink-0 w-1.5 h-1.5 rounded-full ${fullPlayer.role === "all-rounder" ? "bg-brand" : fullPlayer.role === "bowler" ? "bg-blue-400" : "bg-red-400"}`}
-                                ></div>
-                                <span className="text-[8px] font-bold uppercase tracking-widest">
-                                  {fullPlayer.role}
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
+                                  (fullPlayer.role || "batsman") === "all-rounder"
+                                    ? "bg-brand/10 text-brand border border-brand/20"
+                                    : (fullPlayer.role || "batsman") === "bowler"
+                                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                }`}>
+                                  {fullPlayer.role || "batsman"}
                                 </span>
+                                {team.captainId === p.id && (
+                                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                    <Crown size={8} /> Captain
+                                  </span>
+                                )}
                                 {(fullPlayer.totalRuns > 0 ||
                                   fullPlayer.totalWickets > 0) && (
                                   <div className="w-[1px] h-2 bg-white/20 mx-1" />
@@ -1864,6 +2159,7 @@ function TeamsSection({
                               <label
                                 className="p-1.5 hover:text-brand transition-all cursor-pointer opacity-100 group-hover/player:bg-white/5 rounded-lg flex items-center justify-center shrink-0"
                                 title="Upload Photo"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <Camera size={14} />
                                 <input
@@ -1917,6 +2213,18 @@ function TeamsSection({
                                 className="text-text-dim group-hover/player:text-brand transition-all shrink-0"
                               />
                             </button>
+                            {isOrganizer && team.captainId !== p.id && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMakeCaptain(team.id, p.id);
+                                }}
+                                className="p-1.5 hover:text-orange-500 transition-all cursor-pointer opacity-0 group-hover/player:opacity-100 shrink-0"
+                                title="Make Captain"
+                              >
+                                <Crown size={14} />
+                              </button>
+                            )}
                             {isOrganizer && (
                               <button
                                 onClick={(e) => {
@@ -2047,7 +2355,7 @@ function TeamsSection({
                   className="w-full py-3 border border-dashed border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest text-text-dim hover:text-brand hover:border-brand/40 hover:bg-brand/5 transition-all flex items-center justify-center gap-2"
                 >
                   <UserPlus size={14} />
-                  Add New Player
+                  Add Player
                 </button>
                 <button
                   onClick={() => setShowInviteModal(team.id)}
@@ -2135,7 +2443,7 @@ function TeamsSection({
             className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
           >
             <h2 className="text-xl sm:text-2xl font-black uppercase mb-6 tracking-tighter text-white italic">
-              Edit Team Name
+              Edit Team Branding
             </h2>
             <form onSubmit={handleEditTeam} className="space-y-4">
               <div className="space-y-2">
@@ -2151,6 +2459,82 @@ function TeamsSection({
                   required
                 />
               </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-1 space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                    Abbr.
+                  </label>
+                  <input
+                    type="text"
+                    value={editTeamShortName}
+                    onChange={(e) => setEditTeamShortName(e.target.value.toUpperCase().slice(0, 5))}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand text-center"
+                    placeholder="RCB"
+                  />
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                    Team Logo URL
+                  </label>
+                  <input
+                    type="url"
+                    value={editTeamLogoUrl}
+                    onChange={(e) => setEditTeamLogoUrl(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
+              {editTeamLogoUrl.trim() && (
+                <div className="flex items-center justify-center p-3 border border-white/5 bg-white/[0.02] rounded-2xl gap-3">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-text-dim">Preview:</span>
+                  <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20">
+                    <img 
+                      src={editTeamLogoUrl} 
+                      alt="Logo Preview" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2 block">
+                  Primary Brand Color
+                </label>
+                <div className="flex flex-wrap gap-2.5 px-2">
+                  {[
+                    "#98D22C", // Brand Lime
+                    "#3B82F6", // Blue
+                    "#EF4444", // Red
+                    "#F59E0B", // Amber
+                    "#10B981", // Emerald
+                    "#EC4899", // Pink
+                    "#8B5CF6", // Violet
+                    "#14B8A6", // Teal
+                  ].map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setEditTeamColor(color)}
+                      className={`w-7 h-7 rounded-full border-2 transition-all ${
+                        editTeamColor === color
+                          ? "scale-110 border-white"
+                          : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
               <div className="flex gap-4 pt-4">
                 <button
                   type="button"
@@ -2822,10 +3206,32 @@ function MatchDetailsModal({
       if (ball.runs === 6) batsmenMap[strikerId].sixes += 1;
 
       if (ball.isWicket) {
-        batsmenMap[strikerId].out = true;
-        batsmenMap[strikerId].dismissal = ball.wicketType
-          ? `b ${ball.bowlerName} (${ball.wicketType})`
-          : `b ${ball.bowlerName}`;
+        const outId = ball.outBatsmanId || strikerId;
+        const outName = ball.outBatsmanId === ball.nonStrikerId ? ball.nonStrikerName : ball.strikerName;
+        const outPhotoUrl = ball.outBatsmanId === ball.nonStrikerId ? ball.nonStrikerPhotoUrl : ball.strikerPhotoUrl;
+        if (!batsmenMap[outId]) {
+          batsmenMap[outId] = {
+            id: outId,
+            name: outName || "Unknown",
+            photoUrl: outPhotoUrl || null,
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            out: false,
+            dismissal: "",
+          };
+        }
+        batsmenMap[outId].out = true;
+        if (ball.wicketType === "run out") {
+          batsmenMap[outId].dismissal = ball.fielderName
+            ? `run out (${ball.fielderName})`
+            : `run out`;
+        } else {
+          batsmenMap[outId].dismissal = ball.wicketType
+            ? `b ${ball.bowlerName} (${ball.wicketType})`
+            : `b ${ball.bowlerName}`;
+        }
       }
 
       // Bowling Stats
@@ -4163,6 +4569,11 @@ function MatchesSection({
   defaultOvers?: number;
 }) {
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [showPlayoffsModal, setShowPlayoffsModal] = useState(false);
+  const [qualifiersCount, setQualifiersCount] = useState<number>(4);
+  const [generationMode, setGenerationMode] = useState<"round-robin" | "playoffs">("round-robin");
+  const [roundRobinCount, setRoundRobinCount] = useState<string>("all");
+  const [isGeneratingPlayoffs, setIsGeneratingPlayoffs] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
   const [editCompletedMatch, setEditCompletedMatch] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -4303,6 +4714,159 @@ function MatchesSection({
     };
   }, [selectedMatchStats?.id]);
 
+  const handleGeneratePlayoffs = async () => {
+    setIsGeneratingPlayoffs(true);
+    setMatchError("");
+
+    try {
+      // 1. Calculate Standings
+      const standings = teams.map((team) => {
+        const teamMatches = matches.filter(
+          (m) =>
+            m.status === "completed" &&
+            (m.teamAId === team.id || m.teamBId === team.id),
+        );
+        const won = teamMatches.filter((m) => m.winnerId === team.id).length;
+        
+        let totalRunsScored = 0;
+        let totalOversFaced = 0;
+        let totalRunsConceded = 0;
+        let totalOversBowled = 0;
+
+        teamMatches.forEach((m) => {
+          const isTeamA = m.teamAId === team.id;
+          const ownScore = isTeamA ? m.score.teamA : m.score.teamB;
+          const oppScore = isTeamA ? m.score.teamB : m.score.teamA;
+          const maxOvers = m.maxOvers || 20;
+
+          totalRunsScored += ownScore.runs || 0;
+          totalRunsConceded += oppScore.runs || 0;
+
+          if (ownScore.wickets >= 10) {
+            totalOversFaced += maxOvers;
+          } else {
+            totalOversFaced += Math.floor(ownScore.overs) + (ownScore.overs % 1) * 10 / 6;
+          }
+
+          if (oppScore.wickets >= 10) {
+            totalOversBowled += maxOvers;
+          } else {
+            totalOversBowled += Math.floor(oppScore.overs) + (oppScore.overs % 1) * 10 / 6;
+          }
+        });
+
+        const runRateFor = totalOversFaced > 0 ? totalRunsScored / totalOversFaced : 0;
+        const runRateAgainst = totalOversBowled > 0 ? totalRunsConceded / totalOversBowled : 0;
+        const nrr = runRateFor - runRateAgainst;
+
+        return {
+          id: team.id,
+          name: team.name,
+          points: won * 2,
+          nrr: Number(nrr.toFixed(3)),
+        };
+      });
+
+      standings.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return b.nrr - a.nrr;
+      });
+
+      const createScheduledMatch = async (team1: any, team2: any) => {
+        await addDoc(collection(db, "matches"), {
+          tournamentId,
+          teamAId: team1.id,
+          teamAName: team1.name,
+          teamBId: team2.id,
+          teamBName: team2.name,
+          venue: venue || "",
+          matchDate: matchDate || "",
+          matchTime: matchTime || "",
+          status: "scheduled",
+          maxOvers: Number(maxOvers),
+          currentInnings: 1,
+          isFreeHit: false,
+          score: {
+            teamA: { runs: 0, wickets: 0, overs: 0 },
+            teamB: { runs: 0, wickets: 0, overs: 0 },
+          },
+        });
+      };
+
+      if (generationMode === "round-robin") {
+        let targetTeams = [...teams];
+        if (roundRobinCount !== "all") {
+          const limit = Number(roundRobinCount);
+          if (teams.length < limit) {
+            setMatchError(`You have only registered ${teams.length} teams. Please register at least ${limit} teams to generate standard fixtures for them.`);
+            setIsGeneratingPlayoffs(false);
+            return;
+          }
+          const topIds = standings.slice(0, limit).map((t) => t.id);
+          targetTeams = teams.filter((t) => topIds.includes(t.id));
+        }
+
+        if (targetTeams.length < 2) {
+          setMatchError("Please register at least 2 teams to generate round-robin fixtures.");
+          setIsGeneratingPlayoffs(false);
+          return;
+        }
+
+        let scheduleCreated = 0;
+        for (let i = 0; i < targetTeams.length; i++) {
+          for (let j = i + 1; j < targetTeams.length; j++) {
+            const teamAUnit = targetTeams[i];
+            const teamBUnit = targetTeams[j];
+
+            // Prevent duplicating existing matches
+            const exists = matches.some(
+              (m) =>
+                (m.teamAId === teamAUnit.id && m.teamBId === teamBUnit.id) ||
+                (m.teamAId === teamBUnit.id && m.teamBId === teamAUnit.id)
+            );
+
+            if (!exists) {
+              await createScheduledMatch(teamAUnit, teamBUnit);
+              scheduleCreated++;
+            }
+          }
+        }
+
+        setShowPlayoffsModal(false);
+      } else {
+        const topTeams = standings.slice(0, qualifiersCount);
+        if (topTeams.length < qualifiersCount) {
+          setMatchError("Not enough teams to generate playoffs.");
+          setIsGeneratingPlayoffs(false);
+          return;
+        }
+
+        if (qualifiersCount === 2) {
+          await createScheduledMatch(topTeams[0], topTeams[1]);
+        } else if (qualifiersCount === 3) {
+          await createScheduledMatch(topTeams[1], topTeams[2]);
+        } else if (qualifiersCount === 4) {
+          await createScheduledMatch(topTeams[0], topTeams[3]);
+          await createScheduledMatch(topTeams[1], topTeams[2]);
+        } else if (qualifiersCount === 5) {
+          await createScheduledMatch(topTeams[3], topTeams[4]);
+        } else if (qualifiersCount === 8) {
+          await createScheduledMatch(topTeams[0], topTeams[7]);
+          await createScheduledMatch(topTeams[1], topTeams[6]);
+          await createScheduledMatch(topTeams[2], topTeams[5]);
+          await createScheduledMatch(topTeams[3], topTeams[4]);
+        }
+
+        setShowPlayoffsModal(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setMatchError("Failed to generate schedule.");
+    } finally {
+      setIsGeneratingPlayoffs(false);
+    }
+  };
+
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     setMatchError("");
@@ -4402,12 +4966,20 @@ function MatchesSection({
           </div>
         </div>
         {isOrganizer && (
-          <button
-            onClick={() => setShowMatchModal(true)}
-            className="px-6 py-2 bg-brand text-black rounded-lg font-black uppercase tracking-widest text-[9px] hover:bg-white transition-all shadow-lg shadow-brand/20"
-          >
-            + Schedule Match
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPlayoffsModal(true)}
+              className="px-6 py-2 bg-purple-500 text-white rounded-lg font-black uppercase tracking-widest text-[9px] hover:bg-purple-400 transition-all shadow-lg shadow-purple-500/20"
+            >
+              ⚡ Auto-Schedule
+            </button>
+            <button
+              onClick={() => setShowMatchModal(true)}
+              className="px-6 py-2 bg-brand text-black rounded-lg font-black uppercase tracking-widest text-[9px] hover:bg-white transition-all shadow-lg shadow-brand/20"
+            >
+              + Schedule Match
+            </button>
+          </div>
         )}
       </div>
 
@@ -4430,6 +5002,11 @@ function MatchesSection({
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 italic leading-none">
                   {match.status}
                 </span>
+                {match.status === "completed" && match.aiSummary && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-brand/10 text-brand border border-brand/20 ml-1" title="AI Match Summary Available">
+                    <Check size={8} strokeWidth={4} /> AI Summary
+                  </span>
+                )}
               </div>
               <div className="flex flex-col items-end gap-1">
                 <div className="flex items-center gap-2 text-[9px] font-bold text-text-dim/60 uppercase tracking-widest italic">
@@ -4649,6 +5226,154 @@ function MatchesSection({
           />
         )}
       </AnimatePresence>
+
+      {showPlayoffsModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowPlayoffsModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+          >
+            <button 
+              onClick={() => setShowPlayoffsModal(false)}
+              className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-xl text-text-dim hover:text-white transition-all"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-1 tracking-tighter text-white italic">
+              Auto-Generate Fixtures
+            </h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim mb-6 leading-relaxed">
+              Instantly configure the tournament stage schedule.
+            </p>
+
+            {/* Tab Controller */}
+            <div className="flex bg-white/5 p-1 rounded-xl mb-6 border border-white/5">
+              <button
+                type="button"
+                onClick={() => setGenerationMode("round-robin")}
+                className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all text-center ${
+                  generationMode === "round-robin"
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-500/20"
+                    : "text-text-dim hover:text-white"
+                }`}
+              >
+                🔄 Round Robin
+              </button>
+              <button
+                type="button"
+                onClick={() => setGenerationMode("playoffs")}
+                className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all text-center ${
+                  generationMode === "playoffs"
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-500/20"
+                    : "text-text-dim hover:text-white"
+                }`}
+              >
+                🏆 Playoffs (Brackets)
+              </button>
+            </div>
+
+            {matchError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-xs font-bold uppercase tracking-widest text-center">
+                {matchError}
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              {generationMode === "round-robin" ? (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                      Number of Round-Robin Teams
+                    </label>
+                    <select
+                      value={roundRobinCount}
+                      onChange={(e) => setRoundRobinCount(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand appearance-none"
+                    >
+                      <option value="all" className="bg-bg-secondary">
+                        All Registered Teams ({teams.length})
+                      </option>
+                      <option value="3" className="bg-bg-secondary">
+                        Top 3 Teams (Leaderboard)
+                      </option>
+                      <option value="4" className="bg-bg-secondary">
+                        Top 4 Teams (Leaderboard)
+                      </option>
+                      <option value="5" className="bg-bg-secondary">
+                        Top 5 Teams (Leaderboard)
+                      </option>
+                      <option value="6" className="bg-bg-secondary">
+                        Top 6 Teams (Leaderboard)
+                      </option>
+                      <option value="8" className="bg-bg-secondary">
+                        Top 8 Teams (Leaderboard)
+                      </option>
+                    </select>
+                  </div>
+                  <p className="text-[9px] text-text-dim/80 font-bold uppercase leading-relaxed px-1">
+                    💡 Schedules matches so that every team in the tournament plays against every other team once. Duplicates are automatically skipped!
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                      Number of Qualified Teams
+                    </label>
+                    <select
+                      value={qualifiersCount}
+                      onChange={(e) => setQualifiersCount(Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand appearance-none"
+                    >
+                      <option value={2} className="bg-bg-secondary">
+                        Top 2 (Finale)
+                      </option>
+                      <option value={3} className="bg-bg-secondary">
+                        Top 3 (Eliminator & Finale later)
+                      </option>
+                      <option value={4} className="bg-bg-secondary">
+                        Top 4 (Semi Finals)
+                      </option>
+                      <option value={5} className="bg-bg-secondary">
+                        Top 5 (Eliminators)
+                      </option>
+                      <option value={8} className="bg-bg-secondary">
+                        Top 8 (Quarter Finals)
+                      </option>
+                    </select>
+                  </div>
+                  <p className="text-[9px] text-text-dim/80 font-bold uppercase leading-relaxed px-1">
+                    💡 Schedules knockout tournament bracket fixtures according to the current rankings on the standings leaderboard.
+                  </p>
+                </>
+              )}
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowPlayoffsModal(false)}
+                  disabled={isGeneratingPlayoffs}
+                  className="flex-1 py-3 border border-white/10 rounded-xl font-bold uppercase text-[10px] tracking-widest text-white hover:bg-white/5 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleGeneratePlayoffs}
+                  disabled={isGeneratingPlayoffs}
+                  className="flex-1 py-3 bg-purple-500 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20 hover:bg-purple-400 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {isGeneratingPlayoffs ? "Configuring..." : "Generate Schedule"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {showMatchModal && (
         <div 
@@ -4957,6 +5682,78 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
     })
     .slice(0, 5);
 
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (selectedPlayerIds.length === 0 && playerOfTournament.length > 0) {
+      setSelectedPlayerIds(playerOfTournament.slice(0, 3).map((p) => p.id));
+    }
+  }, [playerOfTournament]);
+
+  const handleAddPlayerCompare = (id: string) => {
+    if (selectedPlayerIds.includes(id)) {
+      setSelectedPlayerIds(selectedPlayerIds.filter((pid) => pid !== id));
+    } else {
+      if (selectedPlayerIds.length >= 4) return;
+      setSelectedPlayerIds([...selectedPlayerIds, id]);
+    }
+  };
+
+  const selectedPlayers = selectedPlayerIds
+    .map((id) => allPlayers.find((p) => p.id === id))
+    .filter(Boolean);
+
+  const COMPARE_COLORS = ["#98D22C", "#3B82F6", "#EC4899", "#14B8A6"];
+
+  const getStrikeRateScore = (sr: number) => {
+    if (!sr || isNaN(sr)) return 0;
+    return Math.min(100, (sr / 200) * 100);
+  };
+
+  const getAvgScore = (avg: number) => {
+    if (!avg || isNaN(avg)) return 0;
+    return Math.min(100, (avg / 60) * 100);
+  };
+
+  const getEconRateScore = (econ: number) => {
+    if (econ === undefined || econ === null || econ === 0 || isNaN(econ)) return 0;
+    const econScore = ((12 - econ) / 8) * 100;
+    return Math.max(0, Math.min(100, econScore));
+  };
+
+  const getWicketsScore = (w: number) => {
+    if (!w || isNaN(w)) return 0;
+    return Math.min(100, (w / 10) * 100);
+  };
+
+  const getRunsScore = (r: number) => {
+    if (!r || isNaN(r)) return 0;
+    return Math.min(100, (r / 250) * 100);
+  };
+
+  const radarChartData = [
+    {
+      subject: "Strike Rate",
+      ...selectedPlayers.reduce((acc, p, idx) => ({ ...acc, [`player_${idx}`]: getStrikeRateScore(p.strikeRate || 0) }), {}),
+    },
+    {
+      subject: "Batting Avg",
+      ...selectedPlayers.reduce((acc, p, idx) => ({ ...acc, [`player_${idx}`]: getAvgScore(p.battingAverage || 0) }), {}),
+    },
+    {
+      subject: "Total Runs",
+      ...selectedPlayers.reduce((acc, p, idx) => ({ ...acc, [`player_${idx}`]: getRunsScore(p.totalRuns || 0) }), {}),
+    },
+    {
+      subject: "Econ Rating",
+      ...selectedPlayers.reduce((acc, p, idx) => ({ ...acc, [`player_${idx}`]: getEconRateScore(p.economyRate || 0) }), {}),
+    },
+    {
+      subject: "Wickets",
+      ...selectedPlayers.reduce((acc, p, idx) => ({ ...acc, [`player_${idx}`]: getWicketsScore(p.totalWickets || 0) }), {}),
+    },
+  ];
+
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="text-center">
@@ -4979,23 +5776,73 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
             {playerOfTournament.map((p, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                className={`flex items-center justify-between p-3 rounded-xl transition-all relative overflow-hidden ${
+                  i === 0
+                    ? "bg-gradient-to-r from-yellow-500/15 via-yellow-500/5 to-transparent border border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.05)] hover:from-yellow-500/20 active:scale-[0.99]"
+                    : "bg-white/5 hover:bg-white/10"
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center text-[10px] font-black italic">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black italic ${
+                    i === 0 ? "bg-yellow-500 text-black shadow-lg shadow-yellow-500/20" : "bg-yellow-500/20 text-yellow-500"
+                  }`}>
                     {i + 1}
                   </div>
                   <div>
-                    <div className="font-bold text-white text-xs sm:text-sm">
-                      {p.name || "Unknown Player"}
+                    <div className="flex items-center gap-2 flex-wrap animate-in fade-in duration-300">
+                      <div className="font-bold text-white text-xs sm:text-sm">
+                        {p.name || "Unknown Player"}
+                      </div>
+                      {i === 0 && (
+                        <motion.span
+                          animate={{
+                            scale: [1, 1.04, 1],
+                            boxShadow: [
+                              "0 10px 15px -3px rgba(234, 179, 8, 0.2)",
+                              "0 10px 25px -3px rgba(234, 179, 8, 0.5)",
+                              "0 10px 15px -3px rgba(234, 179, 8, 0.2)"
+                            ]
+                          }}
+                          transition={{
+                            duration: 2.5,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider bg-yellow-500 text-black border border-yellow-400/50 shadow-lg shadow-yellow-500/30 relative overflow-hidden"
+                        >
+                          <motion.div
+                            animate={{
+                              x: ["-100%", "200%"]
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              repeatDelay: 1
+                            }}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12"
+                          />
+                          <span className="relative z-10 flex items-center gap-1">
+                            👑 Tournament MVP
+                          </span>
+                        </motion.span>
+                      )}
                     </div>
-                    <div className="text-[9px] uppercase tracking-widest text-text-dim">
-                      {p.teamName}
+                    <div className="text-[9px] uppercase tracking-widest text-text-dim flex items-center gap-1.5 flex-wrap">
+                      <span>{p.teamName}</span>
+                      {i === 0 && (
+                        <>
+                          <span className="text-white/20">•</span>
+                          <span className="text-yellow-500/80 font-mono text-[8.5px] tracking-normal uppercase">
+                            Runs ({p.totalRuns || 0}) + Wickets ({p.totalWickets || 0}) × 25
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="text-lg sm:text-xl font-black italic text-yellow-500">
-                  <span className="text-[10px] text-text-dim mr-2">PTS</span>
+                  <span className="text-[10px] text-text-dim mr-2 font-black italic">PTS</span>
                   {((p.totalRuns || 0) + (p.totalWickets || 0) * 25).toFixed(0)}
                 </div>
               </div>
@@ -5006,6 +5853,225 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Radar Chart Player Comparison Card */}
+        <div className="bg-bg-secondary border border-white/5 rounded-[2rem] p-6 lg:p-8 shadow-xl flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+            <div>
+              <h3 className="text-xl font-black uppercase italic text-brand tracking-tighter flex items-center gap-2">
+                <Target size={22} className="text-brand" /> Player Tactics Comparison
+              </h3>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-text-dim">
+                Side-by-side performance radar map (Max 4 players)
+              </p>
+            </div>
+            {allPlayers.length > 0 && (
+              <div className="relative w-full md:w-72">
+                <select
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (id) {
+                      handleAddPlayerCompare(id);
+                      e.target.value = "";
+                    }
+                  }}
+                  className="w-full bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-3 text-xs text-white uppercase italic font-bold outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+                >
+                  <option value="">+ Add player to compare...</option>
+                  {allPlayers
+                    .filter((p) => !selectedPlayerIds.includes(p.id))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.teamName})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Selected Players list */}
+          <div className="flex flex-wrap gap-3">
+            {selectedPlayers.map((p, idx) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 bg-white/5 hover:bg-white/10 p-2.5 rounded-2xl border transition-all"
+                style={{ borderColor: `${COMPARE_COLORS[idx % COMPARE_COLORS.length]}30` }}
+              >
+                <div
+                  className="w-3.5 h-3.5 rounded-full ring-2 ring-white/15"
+                  style={{ backgroundColor: COMPARE_COLORS[idx % COMPARE_COLORS.length] }}
+                />
+                <div className="text-[10px] font-black uppercase tracking-tight text-white leading-none">
+                  {p.name}
+                  <span className="text-[8px] font-bold text-text-dim lowercase tracking-wide block leading-none mt-0.5">
+                    {p.teamName}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddPlayerCompare(p.id)}
+                  className="ml-1 p-1 hover:bg-white/10 rounded-full text-text-dim hover:text-white transition-all flex items-center justify-center"
+                  title="Remove"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            {selectedPlayers.length === 0 && (
+              <p className="text-[10px] font-bold italic uppercase tracking-wider text-text-dim/40 py-2">
+                Select players from the dropdown above to begin comparison...
+              </p>
+            )}
+          </div>
+
+          {selectedPlayers.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              {/* Radar Chart Visual */}
+              <div className="lg:col-span-7 h-[340px] w-full flex items-center justify-center relative bg-white/[0.01] border border-white/5 rounded-3xl p-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarChartData}>
+                    <PolarGrid stroke="rgba(255, 255, 255, 0.08)" />
+                    <PolarAngleAxis
+                      dataKey="subject"
+                      tick={{ fill: "rgba(255, 255, 255, 0.6)", fontSize: 9, fontWeight: "900", letterSpacing: "0.08em" }}
+                    />
+                    <PolarRadiusAxis
+                      angle={30}
+                      domain={[0, 100]}
+                      tick={{ fill: "rgba(255, 255, 255, 0.2)", fontSize: 8 }}
+                      stroke="rgba(255, 255, 255, 0.02)"
+                    />
+                    {selectedPlayers.map((p, idx) => (
+                      <Radar
+                        key={p.id}
+                        name={p.name}
+                        dataKey={`player_${idx}`}
+                        stroke={COMPARE_COLORS[idx % COMPARE_COLORS.length]}
+                        fill={COMPARE_COLORS[idx % COMPARE_COLORS.length]}
+                        fillOpacity={0.25}
+                      />
+                    ))}
+                    <RechartsTooltip
+                      content={({ active, payload }: any) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-4 shadow-2xl space-y-2">
+                              <p className="text-[10px] font-black uppercase text-text-dim tracking-widest border-b border-white/5 pb-1 mb-2">
+                                Comparative Stats
+                              </p>
+                              <div className="space-y-1.5">
+                                {payload.map((entry: any, i: number) => {
+                                  const pIdx = parseInt(entry.dataKey.split("_")[1]);
+                                  const player = selectedPlayers[pIdx];
+                                  if (!player) return null;
+
+                                  let originalVal = "";
+                                  if (entry.payload.subject === "Strike Rate") originalVal = `${player.strikeRate || 0} SR`;
+                                  else if (entry.payload.subject === "Batting Avg") originalVal = `${player.battingAverage || 0} AVG`;
+                                  else if (entry.payload.subject === "Total Runs") originalVal = `${player.totalRuns || 0} Runs`;
+                                  else if (entry.payload.subject === "Econ Rating") originalVal = player.economyRate ? `${player.economyRate} Econ` : "N/A";
+                                  else if (entry.payload.subject === "Wickets") originalVal = `${player.totalWickets || 0} Wkts`;
+
+                                  return (
+                                    <div key={i} className="flex items-center justify-between gap-6">
+                                      <div className="flex items-center gap-1.5">
+                                        <div
+                                          className="w-2.5 h-2.5 rounded-full"
+                                          style={{ backgroundColor: COMPARE_COLORS[pIdx % COMPARE_COLORS.length] }}
+                                        />
+                                        <span className="text-[11px] font-bold text-white uppercase">{player.name}</span>
+                                      </div>
+                                      <span className="text-[11px] font-mono font-black text-brand uppercase tracking-tighter">
+                                        {originalVal} ({entry.value.toFixed(0)}%)
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Stats Table / Comparison Details */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="text-[10px] font-black uppercase tracking-widest text-text-dim">
+                  Head-To-Head Stats Detail
+                </div>
+                <div className="space-y-3">
+                  {selectedPlayers.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2.5 hover:border-white/10 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: COMPARE_COLORS[idx % COMPARE_COLORS.length] }}
+                          />
+                          <span className="text-xs font-black uppercase italic text-white tracking-tight">
+                            {p.name}
+                          </span>
+                        </div>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-text-dim bg-white/5 px-2 py-0.5 rounded-md">
+                          {p.teamName}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2 text-center">
+                        <div className="bg-white/[0.01] border border-white/[0.03] p-2 rounded-xl">
+                          <div className="text-[8px] font-bold uppercase text-text-dim tracking-wider leading-none">
+                            Runs
+                          </div>
+                          <div className="text-sm font-black italic text-white mt-1">
+                            {p.totalRuns || 0}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.01] border border-white/[0.03] p-2 rounded-xl">
+                          <div className="text-[8px] font-bold uppercase text-text-dim tracking-wider leading-none">
+                            Avg
+                          </div>
+                          <div className="text-sm font-black italic text-white mt-1">
+                            {(p.battingAverage || 0).toFixed(1)}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.01] border border-white/[0.03] p-2 rounded-xl">
+                          <div className="text-[8px] font-bold uppercase text-text-dim tracking-wider leading-none">
+                            Wkts
+                          </div>
+                          <div className="text-sm font-black italic text-white mt-1">
+                            {p.totalWickets || 0}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.01] border border-white/[0.03] p-2 rounded-xl">
+                          <div className="text-[8px] font-bold uppercase text-text-dim tracking-wider leading-none">
+                            Econ
+                          </div>
+                          <div className="text-sm font-black italic text-white mt-1">
+                            {p.economyRate ? p.economyRate.toFixed(1) : "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white/[0.01] border border-dashed border-white/5 rounded-3xl">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
+                Please add players to build the radar map
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="bg-bg-secondary border border-orange-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">

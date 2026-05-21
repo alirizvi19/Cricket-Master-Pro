@@ -17,10 +17,13 @@ export default function Admin() {
   const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
+    if (authLoading) return;
     if (isAdmin) {
       fetchUsers();
+    } else {
+      setLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, authLoading]);
 
   const fetchUsers = async () => {
     try {
@@ -137,11 +140,12 @@ export default function Admin() {
                 value={u.role || 'viewer'}
                 onChange={(e) => updateUserAccess(u.uid, e.target.value)}
                 disabled={updating === u.uid || u.email === user?.email}
-                className="bg-transparent text-white text-xs font-bold uppercase outline-none cursor-pointer pr-4 disabled:opacity-50"
+                className="bg-transparent text-white text-xs font-bold uppercase outline-none cursor-pointer pr-4 hover:text-brand focus:text-brand disabled:opacity-50 transition-colors"
+                style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
               >
-                <option value="viewer" className="text-black">View Only</option>
-                <option value="scorer" className="text-black">Scorer</option>
-                <option value="admin" className="text-black">Admin</option>
+                <option value="viewer" className="text-black bg-white">View Only</option>
+                <option value="scorer" className="text-black bg-white">Scorer</option>
+                <option value="admin" className="text-black bg-white">Admin</option>
               </select>
             </div>
 

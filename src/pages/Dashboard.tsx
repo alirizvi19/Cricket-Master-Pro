@@ -322,11 +322,11 @@ function StatCard({ icon, label, value, color = "bg-bg-secondary text-white" }: 
 
 function TournamentCard({ tournament, onDelete }: { tournament: any, onDelete: () => void | Promise<void>, key?: any }) {
   return (
-    <div className="relative group/card h-full">
+    <div className="relative group h-full">
       <Link to={`/tournament/${tournament.id}`}>
         <motion.div
           whileHover={{ y: -8 }}
-          className="bg-bg-secondary border border-white/5 rounded-3xl p-6 md:p-7 hover:border-brand/50 transition-all group h-full flex flex-col justify-between shadow-2xl relative overflow-hidden"
+          className="bg-bg-secondary border border-white/5 rounded-3xl p-6 md:p-7 hover:border-brand/50 transition-all h-full flex flex-col justify-between shadow-2xl relative overflow-hidden"
         >
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           
@@ -380,7 +380,7 @@ function TournamentCard({ tournament, onDelete }: { tournament: any, onDelete: (
           e.stopPropagation();
           onDelete();
         }}
-        className="absolute top-6 right-6 z-10 p-2.5 bg-black/60 text-white/20 hover:text-red-500 rounded-xl opacity-0 group-hover/card:opacity-100 transition-all backdrop-blur-md border border-white/10 hover:border-red-500/50"
+        className="absolute top-6 right-6 z-10 p-2.5 bg-black/60 text-white/20 hover:text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all backdrop-blur-md border border-white/10 hover:border-red-500/50"
       >
         <Trash2 size={16} />
       </button>

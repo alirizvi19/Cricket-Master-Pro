@@ -1,7 +1,7 @@
 // src/pages/Scoring.tsx
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/lib/hooks';
-import { doc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, where, getDocs, increment } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, where, getDocs, increment, runTransaction } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Settings, User, AlertTriangle, Check, X, ChevronDown, Users, Share2, Activity, Trophy, MessageCircle } from 'lucide-react';
@@ -24,7 +24,8 @@ export default function Scoring() {
     region?: string | null,
     wicketType?: string | null,
     fielderId?: string | null,
-    fielderName?: string | null
+    fielderName?: string | null,
+    outBatsmanId?: string | null
   } | null>(null);
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
   const [showTeamSelector, setShowTeamSelector] = useState<{ type: 'batting' | 'opponent' } | null>(null);
@@ -32,6 +33,7 @@ export default function Scoring() {
   const [showBatsmanSelection, setShowBatsmanSelection] = useState<any | null>(null);
   const [showBowlerSelection, setShowBowlerSelection] = useState(false);
   const [showSpecialRuns, setShowSpecialRuns] = useState(false);
+  const [showExtrasSelection, setShowExtrasSelection] = useState<{ type: 'bye' | 'lb', label: string } | null>(null);
   const [battingSquad, setBattingSquad] = useState<any[]>([]);
   const [bowlingSquad, setBowlingSquad] = useState<any[]>([]);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -158,7 +160,13 @@ export default function Scoring() {
           if (!stats[ball.strikerId]) stats[ball.strikerId] = { runs: 0, ballsFaced: 0, isOut: false, wickets: 0, runsConceded: 0, ballsBowled: 0 };
           stats[ball.strikerId].runs += (ball.runs || 0);
           if (ball.extraType !== 'wide' && ball.extraType !== 'nb') stats[ball.strikerId].ballsFaced++;
-          if (ball.isWicket) stats[ball.strikerId].isOut = true;
+        }
+        if (ball.isWicket) {
+          const actualOutId = ball.outBatsmanId || ball.strikerId;
+          if (actualOutId) {
+            if (!stats[actualOutId]) stats[actualOutId] = { runs: 0, ballsFaced: 0, isOut: false, wickets: 0, runsConceded: 0, ballsBowled: 0 };
+            stats[actualOutId].isOut = true;
+          }
         }
         if (ball.bowlerId) {
           if (!stats[ball.bowlerId]) stats[ball.bowlerId] = { runs: 0, ballsFaced: 0, isOut: false, wickets: 0, runsConceded: 0, ballsBowled: 0 };
@@ -242,9 +250,17 @@ export default function Scoring() {
           scoreB: match.score?.['teamB'],
           winner: winnerId === match.teamAId ? match.teamAName : winnerId === match.teamBId ? match.teamBName : 'Tie'
         } })
-      }).then(res => res.json()).then(data => {
+      }).then(res => res.json()).then(async (data) => {
         if (data.summary) {
-          updateDoc(doc(db, 'matches', id), { aiSummary: data.summary }).catch(e => console.error(e));
+          try {
+            const matchDocRef = doc(db, 'matches', id);
+            await runTransaction(db, async (transaction) => {
+              const matchDoc = await transaction.get(matchDocRef);
+              if (matchDoc.exists()) {
+                transaction.update(matchDocRef, { aiSummary: data.summary });
+              }
+            });
+          } catch (ignoreErr) {}
         }
       }).catch(err => console.error(err));
 
@@ -315,7 +331,8 @@ export default function Scoring() {
     region: string | null = null,
     wicketType: string | null = null,
     fielderId: string | null = null,
-    fielderName: string | null = null
+    fielderName: string | null = null,
+    outBatsmanId: string | null = null
   ) => {
     if (!match) return;
 
@@ -419,9 +436,20 @@ export default function Scoring() {
         isFreeHit: nextIsFreeHit || (!!match.isFreeHit && ballIncrement === 0),
       };
 
-      if (isWicket && !isAllOut && !isTargetReached) {
-        // Pop up batsman selection
-        setShowBatsmanSelection({ type: 'striker' });
+      if (isWicket) {
+        if (wicketType === 'run out' && outBatsmanId === match.nonStrikerId) {
+          // Non-striker is run out. Striker stays, so we increment striker's count for this ball.
+          updateData.strikerRuns = increment(batterRuns);
+          updateData.strikerBalls = increment(ballIncrement > 0 ? 1 : 0);
+          if (!isAllOut && !isTargetReached) {
+            setShowBatsmanSelection({ type: 'non-striker' });
+          }
+        } else {
+          // Striker is run out or other type of wicket.
+          if (!isAllOut && !isTargetReached) {
+            setShowBatsmanSelection({ type: 'striker' });
+          }
+        }
       }
 
       if (overEnded && !isWicket && !isInningsEnded) {
@@ -429,24 +457,26 @@ export default function Scoring() {
         setShowBowlerSelection(true);
       }
 
-      if (shouldSwap && !isWicket && !isInningsEnded) {
-        updateData.strikerId = match.nonStrikerId || null;
-        updateData.strikerName = match.nonStrikerName || null;
-        updateData.strikerRole = match.nonStrikerRole || null;
-        updateData.strikerPhotoUrl = match.nonStrikerPhotoUrl || null;
-        updateData.strikerRuns = match.nonStrikerRuns || 0;
-        updateData.strikerBalls = match.nonStrikerBalls || 0;
-        
-        updateData.nonStrikerId = match.strikerId || null;
-        updateData.nonStrikerName = match.strikerName || null;
-        updateData.nonStrikerRole = match.strikerRole || null;
-        updateData.nonStrikerPhotoUrl = match.strikerPhotoUrl || null;
-        updateData.nonStrikerRuns = (match.strikerRuns || 0) + batterRuns;
-        updateData.nonStrikerBalls = (match.strikerBalls || 0) + (ballIncrement > 0 ? 1 : 0);
-      } else if (!isWicket) {
-        // No swap and not out: just increment current striker's stats
-        updateData.strikerRuns = increment(batterRuns);
-        updateData.strikerBalls = increment(ballIncrement > 0 ? 1 : 0);
+      if (!isWicket) {
+        if (shouldSwap && !isInningsEnded) {
+          updateData.strikerId = match.nonStrikerId || null;
+          updateData.strikerName = match.nonStrikerName || null;
+          updateData.strikerRole = match.nonStrikerRole || null;
+          updateData.strikerPhotoUrl = match.nonStrikerPhotoUrl || null;
+          updateData.strikerRuns = match.nonStrikerRuns || 0;
+          updateData.strikerBalls = match.nonStrikerBalls || 0;
+          
+          updateData.nonStrikerId = match.strikerId || null;
+          updateData.nonStrikerName = match.strikerName || null;
+          updateData.nonStrikerRole = match.strikerRole || null;
+          updateData.nonStrikerPhotoUrl = match.strikerPhotoUrl || null;
+          updateData.nonStrikerRuns = (match.strikerRuns || 0) + batterRuns;
+          updateData.nonStrikerBalls = (match.strikerBalls || 0) + (ballIncrement > 0 ? 1 : 0);
+        } else {
+          // No swap and not out: just increment current striker's stats
+          updateData.strikerRuns = increment(batterRuns);
+          updateData.strikerBalls = increment(ballIncrement > 0 ? 1 : 0);
+        }
       }
 
       await updateDoc(doc(db, 'matches', match.id), updateData);
@@ -474,6 +504,7 @@ export default function Scoring() {
         strikerPhotoUrl: match.strikerPhotoUrl || null,
         bowlerPhotoUrl: match.bowlerPhotoUrl || null,
         swappedPlayers: shouldSwap,
+        outBatsmanId: outBatsmanId || (isWicket ? match.strikerId : null),
         // Store pre-ball stats for perfect undo
         prevStrikerRuns: match.strikerRuns || 0,
         prevStrikerBalls: match.strikerBalls || 0,
@@ -488,9 +519,17 @@ export default function Scoring() {
           body: JSON.stringify({
             prompt: `Generate a single short sentence of exciting professional cricket commentary for a ball. Batsman: ${match.strikerName || 'Unknown'}, Bowler: ${match.bowlerName || 'Unknown'}. Event: ${isWicket ? "WICKET!" : (extraType ? extraType + " (" + runs + " runs)" : runs + " runs")}. Region: ${region || '-'}.`
           })
-        }).then(res => res.json()).then(data => {
+        }).then(res => res.json()).then(async (data) => {
           if (data.commentary) {
-            updateDoc(doc(db, 'matches', match.id, 'balls', ballRef.id), { commentary: data.commentary }).catch(e => console.error(e));
+            try {
+              const ballDocRef = doc(db, 'matches', match.id, 'balls', ballRef.id);
+              await runTransaction(db, async (transaction) => {
+                const ballDoc = await transaction.get(ballDocRef);
+                if (ballDoc.exists()) {
+                  transaction.update(ballDocRef, { commentary: data.commentary });
+                }
+              });
+            } catch (ignoreErr) {}
           }
         }).catch(err => console.error("Commentary error:", err));
       });
@@ -1000,8 +1039,8 @@ export default function Scoring() {
             <GridBtn value="WD" label="WIDE" onClick={() => handleRecordBall(0, 'wide')} small />
             <GridBtn value="NB" label="NO BALL" onClick={() => handleRecordBall(0, 'nb')} small />
             
-            <GridBtn value="B" label="BYE" onClick={() => handleRecordBall(0, 'bye')} small />
-            <GridBtn value="LB" label="LEG BYE" onClick={() => handleRecordBall(0, 'lb')} small />
+            <GridBtn value="B" label="BYE" onClick={() => setShowExtrasSelection({ type: 'bye', label: 'BYES' })} small />
+            <GridBtn value="LB" label="LEG BYE" onClick={() => setShowExtrasSelection({ type: 'lb', label: 'LEG BYES' })} small />
             <GridBtn value="5/7" label="CUSTOM" onClick={() => setShowSpecialRuns(true)} small />
             <GridBtn value="OUT" label="WICKET" onClick={() => handleRecordBall(0, null, true)} small isDanger />
 
@@ -1021,7 +1060,7 @@ export default function Scoring() {
         {showBatsmanSelection && (
           <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/95 backdrop-blur-xl" />
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="relative bg-bg-secondary border border-white/10 rounded-[3rem] p-8 w-full max-w-sm shadow-2xl space-y-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="relative bg-[#242424] border border-white/10 rounded-[3rem] p-8 w-full max-w-sm shadow-2xl space-y-6">
               <div className="text-center space-y-2">
                 <div className="w-16 h-16 bg-brand/10 text-brand rounded-[1.5rem] flex items-center justify-center mx-auto mb-2">
                   <User size={32} />
@@ -1058,7 +1097,7 @@ export default function Scoring() {
         {showBowlerSelection && (
           <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/95 backdrop-blur-xl" />
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="relative bg-bg-secondary border border-white/10 rounded-[3rem] p-8 w-full max-w-sm shadow-2xl space-y-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="relative bg-[#242424] border border-white/10 rounded-[3rem] p-8 w-full max-w-sm shadow-2xl space-y-6">
               <div className="text-center space-y-2">
                 <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-[1.5rem] flex items-center justify-center mx-auto mb-2">
                   <Activity size={32} />
@@ -1105,7 +1144,7 @@ export default function Scoring() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-bg-secondary border border-white/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl space-y-6"
+              className="relative bg-[#242424] border border-white/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl space-y-6"
             >
               <div className="text-center space-y-2">
                 <div className="w-12 h-12 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-2">
@@ -1168,7 +1207,7 @@ export default function Scoring() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-bg-secondary border border-white/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl space-y-6"
+              className="relative bg-[#242424] border border-white/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl space-y-6"
             >
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${pendingBall.isWicket ? 'bg-red-500/10 text-red-500' : 'bg-brand/10 text-brand'}`}>
                 {pendingBall.isWicket ? <AlertTriangle size={32} /> : <Check size={32} />}
@@ -1189,7 +1228,16 @@ export default function Scoring() {
                     <label className="text-[9px] font-black uppercase tracking-widest text-text-dim block">Wicket Type</label>
                     <select 
                       value={pendingBall.wicketType || 'bowled'} 
-                      onChange={e => setPendingBall({ ...pendingBall, wicketType: e.target.value, fielderId: null, fielderName: null })}
+                      onChange={e => {
+                        const wType = e.target.value;
+                        setPendingBall({ 
+                          ...pendingBall, 
+                          wicketType: wType, 
+                          fielderId: null, 
+                          fielderName: null, 
+                          outBatsmanId: wType === 'run out' ? (match?.strikerId || null) : null 
+                        });
+                      }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-black uppercase italic text-white outline-none focus:border-red-500 transition-all cursor-pointer"
                     >
                       <option value="bowled">Bowled</option>
@@ -1216,6 +1264,24 @@ export default function Scoring() {
                         {bowlingSquad.map(p => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {pendingBall.wicketType === 'run out' && (
+                    <div className="space-y-2 animate-fadeIn">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-text-dim block">Select Who is Run Out</label>
+                      <select 
+                        value={pendingBall.outBatsmanId || match?.strikerId || ''} 
+                        onChange={e => setPendingBall({ ...pendingBall, outBatsmanId: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-black uppercase italic text-white outline-none focus:border-red-500 transition-all cursor-pointer"
+                      >
+                        {match?.strikerId && (
+                          <option value={match.strikerId}>{match.strikerName} (Striker)</option>
+                        )}
+                        {match?.nonStrikerId && (
+                          <option value={match.nonStrikerId}>{match.nonStrikerName} (Non-Striker)</option>
+                        )}
                       </select>
                     </div>
                   )}
@@ -1260,7 +1326,8 @@ export default function Scoring() {
                       pendingBall.region || null,
                       pendingBall.wicketType || 'bowled',
                       pendingBall.fielderId || null,
-                      pendingBall.fielderName || null
+                      pendingBall.fielderName || null,
+                      pendingBall.outBatsmanId || null
                     );
                     setPendingBall(null);
                   }}
@@ -1289,7 +1356,7 @@ export default function Scoring() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-bg-secondary border border-white/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl space-y-6"
+              className="relative bg-[#242424] border border-white/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl space-y-6"
             >
               <div className="text-center space-y-2">
                 <div className="w-12 h-12 bg-white/5 text-white rounded-full flex items-center justify-center mx-auto mb-2">
@@ -1408,6 +1475,54 @@ export default function Scoring() {
         )}
       </AnimatePresence>
 
+      {/* Extras Runs Selector */}
+      <AnimatePresence>
+        {showExtrasSelection && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowExtrasSelection(null)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-[#242424] border border-white/10 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl space-y-6"
+            >
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-black uppercase italic text-white tracking-tight">{showExtrasSelection.label}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim">How many runs were scored?</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[1, 2, 3, 4, 5, 6].map(run => (
+                  <button 
+                    key={run}
+                    onClick={() => {
+                      handleRecordBall(run, showExtrasSelection.type);
+                      setShowExtrasSelection(null);
+                    }}
+                    className="h-16 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center font-black italic text-xl hover:bg-brand hover:text-black transition-all"
+                  >
+                    {run}
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setShowExtrasSelection(null)}
+                className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-text-dim hover:text-white"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Complete Match Confirmation Modal */}
       <AnimatePresence>
         {showCompleteConfirm && (
@@ -1423,7 +1538,7 @@ export default function Scoring() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-bg-secondary rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-white/10 space-y-6"
+              className="relative bg-[#242424] rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-white/10 space-y-6"
             >
               <div className="flex flex-col items-center text-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center text-brand mb-2">
@@ -1470,7 +1585,7 @@ export default function Scoring() {
               initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              className="relative bg-bg-secondary border border-white/10 rounded-[3rem] p-10 w-full max-w-sm shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] text-center space-y-8"
+              className="relative bg-[#242424] border border-white/10 rounded-[3rem] p-10 w-full max-w-sm shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] text-center space-y-8"
             >
               <button 
                 onClick={() => setShowShareModal(false)}

@@ -29,44 +29,43 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        (('email' in request.auth.token) && request.auth.token.email == 'ali.ammar.rizvi13@gmail.com') ||
+        (request.auth.token.email == 'ali.ammar.rizvi13@gmail.com') ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin')
       );
     }
 
     // Relational Helpers
     function isTournamentOfficial(tournamentId) {
-      let docSnap = get(/databases/$(database)/documents/tournaments/$(tournamentId));
-      return isSignedIn() && docSnap != null && (
-        docSnap.data.get('organizerId', '') == request.auth.uid || 
-        (docSnap.data.get('scorers', []).hasAny([request.auth.uid])) ||
-        (request.auth.uid in docSnap.data.get('scorers', {}))
+      let tournamentExists = exists(/databases/$(database)/documents/tournaments/$(tournamentId));
+      return isSignedIn() && tournamentExists && (
+        get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.get('organizerId', '') == request.auth.uid || 
+        get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.get('scorers', []).hasAny([request.auth.uid]) ||
+        (request.auth.uid in get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.get('scorers', {}))
       );
     }
 
     function isTournamentOrganizer(tournamentId) {
-      let docSnap = get(/databases/$(database)/documents/tournaments/$(tournamentId));
-      return isSignedIn() && docSnap != null && docSnap.data.get('organizerId', '') == request.auth.uid;
+      let tournamentExists = exists(/databases/$(database)/documents/tournaments/$(tournamentId));
+      return isSignedIn() && tournamentExists && 
+             get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.get('organizerId', '') == request.auth.uid;
     }
 
     function isTeamOrganizer(teamId) {
-      let docSnap = get(/databases/$(database)/documents/teams/$(teamId));
-      return docSnap != null && isTournamentOfficial(docSnap.data.get('tournamentId', ''));
+      let teamExists = exists(/databases/$(database)/documents/teams/$(teamId));
+      return teamExists && isTournamentOfficial(get(/databases/$(database)/documents/teams/$(teamId)).data.get('tournamentId', ''));
     }
 
     function isMatchOrganizer(matchId) {
-      let docSnap = get(/databases/$(database)/documents/matches/$(matchId));
-      return docSnap != null && isTournamentOfficial(docSnap.data.get('tournamentId', ''));
+      let matchExists = exists(/databases/$(database)/documents/matches/$(matchId));
+      return matchExists && isTournamentOfficial(get(/databases/$(database)/documents/matches/$(matchId)).data.get('tournamentId', ''));
     }
 
     // --- Validation Blueprints ---
 
-    function isValidUser(data) {
-      return data.uid == request.auth.uid &&
-             data.email == request.auth.token.email &&
-             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
-             data.role in ['user', 'admin', 'scorer', 'viewer'] &&
+    function isValidUserData(data) {
+      return (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
+             data.role in ['user', 'admin', 'scorer', 'viewer'] && 
              (!('age' in data) || (data.age is string && data.age.size() <= 3)) &&
              (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
              (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
@@ -87,6 +86,13 @@ service cloud.firestore {
     function isValidTeam(data) {
       return data.name is string && data.name.size() <= 100 &&
              isValidId(data.tournamentId);
+    }
+
+    // Kept standard registration check for direct self-creation rules
+    function isValidUser(data) {
+      return data.uid == request.auth.uid &&
+             data.email == request.auth.token.email &&
+             isValidUserData(data);
     }
 
     function isValidPlayer(data) {
@@ -177,13 +183,17 @@ service cloud.firestore {
     // --- Collection Routes ---
 
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isAdmin() || isOwner(userId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().get('role', 'user') == 'user';
+      
+      // Fixed update condition
+      allow update: if (isAdmin() && isValidUserData(incoming())) || 
+                    (isOwner(userId) && isValidUser(incoming()) && incoming().get('role', existing().get('role', 'user')) == existing().get('role', 'user'));
+      
       allow delete: if isAdmin();
     }
-
+    
     match /tournaments/{tournamentId} {
       allow get: if true;
       allow list: if true;

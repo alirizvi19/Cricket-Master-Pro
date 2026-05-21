@@ -1,7 +1,7 @@
 // src/components/Layout.tsx
 import { auth } from '@/src/lib/firebase';
 import { useAuth } from '@/src/lib/hooks';
-import { Trophy, LogOut, User, Menu, X, PlusCircle, LayoutDashboard, Shield } from 'lucide-react';
+import { Trophy, LogOut, User, Menu, X, PlusCircle, LayoutDashboard, Shield, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -70,21 +70,140 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Drawer */}
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 100 }}
-            className="fixed inset-0 z-40 bg-bg-main md:hidden pt-20 px-6"
-          >
-            <div className="flex flex-col gap-6 text-2xl font-bold uppercase italic">
-              <Link to="/tournaments" onClick={() => setIsMenuOpen(false)}>Tournaments</Link>
-              {user && <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>}
-              {isAdmin && <Link to="/admin" className="text-brand" onClick={() => setIsMenuOpen(false)}>Admin</Link>}
-              {user && <Link to="/profile" onClick={() => setIsMenuOpen(false)}>Profile</Link>}
-              {!user && <Link to="/login" onClick={() => setIsMenuOpen(false)}>Login</Link>}
-              {user && <button onClick={handleLogout} className="text-left text-red-500">Logout</button>}
-            </div>
-          </motion.div>
+          <>
+            {/* Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMenuOpen(false)}
+              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm md:hidden"
+            />
+
+            {/* Side Sheet */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="fixed right-0 top-0 bottom-0 w-4/5 max-w-sm z-[70] bg-bg-secondary border-l border-white/5 shadow-2xl flex flex-col justify-between md:hidden"
+            >
+              <div className="p-6 flex flex-col h-full justify-between">
+                <div>
+                  {/* Drawer Header */}
+                  <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-brand rounded flex items-center justify-center">
+                        <Trophy className="text-black w-4.5 h-4.5" />
+                      </div>
+                      <span className="font-bold tracking-tight text-lg text-white">Menu</span>
+                    </div>
+                    <button 
+                      onClick={() => setIsMenuOpen(false)} 
+                      className="p-1.5 rounded-lg text-text-dim hover:text-white transition-colors bg-white/5 hover:bg-white/10"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* User Authentication Card */}
+                  {user ? (
+                    <div className="bg-white/5 border border-white/5 rounded-xl p-4 mb-8">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white/5 border border-brand/20 flex items-center justify-center overflow-hidden">
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <User className="text-brand w-5 h-5" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-bold text-white truncate">{user.displayName || user.email?.split('@')[0]}</h4>
+                          <p className="text-[10px] font-mono text-text-dim truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-brand/10 text-brand border border-brand/20">
+                          <Shield size={10} /> Admin Access
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-white/5 border border-white/5 rounded-xl p-4 mb-8">
+                      <p className="text-xs text-text-dim leading-relaxed mb-3">Sign in to your account to manage tournaments, keep scores, and track your statistics.</p>
+                      <Link
+                        to="/login"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full h-9 bg-brand hover:bg-white text-black rounded-lg flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider transition-colors"
+                      >
+                        <LogIn size={14} /> Login
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Navigation Links */}
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      to="/tournaments"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-text-dim hover:text-white hover:bg-white/5 transition-all"
+                    >
+                      <Trophy size={18} className="text-brand/80" />
+                      <span>Tournaments</span>
+                    </Link>
+
+                    {user && (
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-text-dim hover:text-white hover:bg-white/5 transition-all"
+                      >
+                        <LayoutDashboard size={18} className="text-brand/80" />
+                        <span>Dashboard</span>
+                      </Link>
+                    )}
+
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-brand hover:bg-brand/10 transition-all border border-brand/10"
+                      >
+                        <Shield size={18} />
+                        <span>Admin Panel</span>
+                      </Link>
+                    )}
+
+                    {user && (
+                      <Link
+                        to="/profile"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-text-dim hover:text-white hover:bg-white/5 transition-all"
+                      >
+                        <User size={18} className="text-brand/80" />
+                        <span>My Profile</span>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                {/* Logout / Footer at the bottom */}
+                {user && (
+                  <div className="pt-4 border-t border-white/5">
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold text-red-100 hover:text-white hover:bg-red-500/10 transition-colors border border-red-500/10"
+                    >
+                      <LogOut size={16} /> Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
