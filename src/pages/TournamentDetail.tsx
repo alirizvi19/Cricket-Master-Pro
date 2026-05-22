@@ -16,7 +16,7 @@ import {
   orderBy,
   onSnapshot,
 } from "firebase/firestore";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import {
   Users,
@@ -46,11 +46,13 @@ import {
   AlertTriangle,
   Mail,
   FileSpreadsheet,
+  FileDown,
   Star,
   Award,
   Target,
   Medal,
   Crown,
+  TrendingUp,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import {
@@ -80,6 +82,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/src/lib/firebase";
 import { getAccessToken, googleSignIn } from "@/src/lib/authGoogle";
 import { exportTournamentToSheets } from "@/src/lib/exportToSheets";
+import { exportTournamentToPDF } from "@/src/lib/exportToPdf";
 
 const getShareableUrl = (path: string) => {
   const { protocol, host } = window.location;
@@ -111,6 +114,7 @@ export default function TournamentDetail() {
   const [newTeamLogoUrl, setNewTeamLogoUrl] = useState("");
   const [newTeamColor, setNewTeamColor] = useState("#98D22C");
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -406,6 +410,19 @@ export default function TournamentDetail() {
     }
   };
 
+  const handleExportToPDF = async () => {
+    try {
+      if (!id) return;
+      setIsExportingPDF(true);
+      await exportTournamentToPDF(id);
+    } catch (err) {
+      console.error("PDF Export failed:", err);
+      alert("Failed to export to PDF");
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   const isOrganizer = isAdmin || user?.uid === tournament?.organizerId;
   const isScorer = isOrganizer || userRole === 'scorer' || tournament?.scorers?.includes(user?.uid);
 
@@ -434,7 +451,7 @@ export default function TournamentDetail() {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 sm:gap-8 relative z-10">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <h1 className="text-[26px] leading-[30px] sm:text-4xl md:text-6xl lg:text-8xl font-black uppercase tracking-tighter text-white italic break-words max-w-full">
+              <h1 className="text-[50px] leading-[60px] font-black uppercase tracking-tighter text-white italic break-words max-w-full">
                 {tournament.name}
               </h1>
               <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
@@ -476,6 +493,17 @@ export default function TournamentDetail() {
                 {isOrganizer && (
                   <>
                     <button
+                      onClick={handleExportToPDF}
+                      disabled={isExportingPDF}
+                      title="Export to PDF"
+                      className="p-2 sm:p-3 text-red-400 hover:bg-red-400/10 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 sm:gap-2"
+                    >
+                      <FileDown className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="hidden md:inline text-[9px] sm:text-[10px] uppercase font-bold tracking-widest">
+                        PDF
+                      </span>
+                    </button>
+                    <button
                       onClick={handleExportToSheets}
                       disabled={isExporting}
                       title="Export to Google Sheets"
@@ -483,7 +511,7 @@ export default function TournamentDetail() {
                     >
                       <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span className="hidden md:inline text-[9px] sm:text-[10px] uppercase font-bold tracking-widest">
-                        Export
+                        Sheets
                       </span>
                     </button>
                     <div className="w-[1px] h-full bg-white/5 mx-1 sm:mx-2" />
@@ -988,6 +1016,9 @@ function StandingsSection({
     direction: "asc" | "desc";
   }>({ key: "points", direction: "desc" });
 
+  const prevRankingsRef = useRef<{ [teamId: string]: number }>({});
+  const [movedUpTeams, setMovedUpTeams] = useState<{ [teamId: string]: boolean }>({});
+
   const standings = teams.map((team) => {
     const teamMatches = matches.filter(
       (m) =>
@@ -1065,6 +1096,36 @@ function StandingsSection({
       return aValue < bValue ? 1 : -1;
     }
   });
+
+  useEffect(() => {
+    // Only detect rank changes if we are sorted by normal point basis
+    if (sortConfig.key !== "points" || sortConfig.direction !== "desc") {
+      return;
+    }
+
+    const currentRankings: { [teamId: string]: number } = {};
+    const newlyMovedUp: { [teamId: string]: boolean } = {};
+
+    sortedStandings.forEach((team, idx) => {
+      currentRankings[team.id] = idx;
+      const prevRank = prevRankingsRef.current[team.id];
+      // Team exists in prev ranks and their index decreased (moved up the leaderboard)
+      if (prevRank !== undefined && idx < prevRank) {
+        newlyMovedUp[team.id] = true;
+      }
+    });
+
+    if (Object.keys(newlyMovedUp).length > 0) {
+      setMovedUpTeams(newlyMovedUp);
+      const timer = setTimeout(() => {
+        setMovedUpTeams({});
+      }, 4000);
+      prevRankingsRef.current = currentRankings;
+      return () => clearTimeout(timer);
+    } else {
+      prevRankingsRef.current = currentRankings;
+    }
+  }, [sortedStandings, sortConfig]);
 
   const handleSort = (key: string) => {
     setSortConfig((prev) => ({
@@ -1227,15 +1288,42 @@ function StandingsSection({
                 <motion.tr
                   layout
                   key={team.id}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="group hover:bg-white/[0.02] transition-colors"
+                  initial={{ backgroundColor: "transparent" }}
+                  animate={
+                    movedUpTeams[team.id]
+                      ? {
+                          backgroundColor: [
+                            "rgba(152, 210, 44, 0.2)",
+                            "rgba(152, 210, 44, 0.05)",
+                            "transparent",
+                          ],
+                        }
+                      : { backgroundColor: "transparent" }
+                  }
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 30,
+                    backgroundColor: { duration: 2, ease: "easeInOut" },
+                  }}
+                  className="group hover:bg-white/[0.02] transition-colors relative"
                 >
-                  <td className="p-3 sm:py-8 sm:px-10">
+                  <td className="p-3 sm:py-8 sm:px-10 relative">
                     <span
                       className={`w-6 h-6 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center font-black italic text-xs sm:text-sm ${idx === 0 && sortConfig.key === "points" && sortConfig.direction === "desc" ? "bg-brand text-black shadow-lg shadow-brand/20" : "bg-white/5 text-text-dim border border-white/5"}`}
                     >
                       {idx + 1}
                     </span>
+                    {movedUpTeams[team.id] && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.5 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 text-brand"
+                        title="Moved Up"
+                      >
+                        <TrendingUp size={16} className="animate-pulse" />
+                      </motion.div>
+                    )}
                   </td>
                   <td className="p-3 sm:py-8 sm:px-4">
                     <div className="flex items-center gap-6">
@@ -1718,39 +1806,71 @@ function TeamsSection({
   ) => {
     try {
       setUploadingPlayerId(playerId);
-      const storageRef = ref(storage, `players/${playerId}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const photoUrl = await getDownloadURL(storageRef);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
 
-      // Update player document
-      try {
-        await updateDoc(doc(db, "players", playerId), { photoUrl });
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `players/${playerId}`);
-      }
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
 
-      // Update team document (denormalized cache)
-      const teamRef = doc(db, "teams", teamId);
-      try {
-        const teamSnap = await getDoc(teamRef);
-        if (teamSnap.exists()) {
-          const currentPlayers = teamSnap.data().players || [];
-          const updatedPlayers = currentPlayers.map((p: any) =>
-            p.id === playerId ? { ...p, photoUrl } : p,
-          );
-          await updateDoc(teamRef, { players: updatedPlayers });
-        }
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `teams/${teamId}`);
-      }
-      
-      // Update local state if needed
-      if (onAddPlayer) onAddPlayer();
-      
+          canvas.width = width;
+          canvas.height = height;
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          const photoUrl = canvas.toDataURL("image/webp", 0.8);
+
+          // Update player document
+          try {
+            await updateDoc(doc(db, "players", playerId), { photoUrl });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, `players/${playerId}`);
+          }
+
+          // Update team document (denormalized cache)
+          const teamRef = doc(db, "teams", teamId);
+          try {
+            const teamSnap = await getDoc(teamRef);
+            if (teamSnap.exists()) {
+              const currentPlayers = teamSnap.data().players || [];
+              const updatedPlayers = currentPlayers.map((p: any) =>
+                p.id === playerId ? { ...p, photoUrl } : p,
+              );
+              await updateDoc(teamRef, { players: updatedPlayers });
+            }
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, `teams/${teamId}`);
+          }
+          
+          // Update local state if needed
+          if (onAddPlayer) onAddPlayer();
+          setUploadingPlayerId(null);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => {
+        alert("Failed to read image.");
+        setUploadingPlayerId(null);
+      };
+      reader.readAsDataURL(file);
     } catch (err) {
       console.error("Photo upload failed", err);
       alert("Failed to upload photo. Please check your Firebase Storage settings and rules.");
-    } finally {
       setUploadingPlayerId(null);
     }
   };

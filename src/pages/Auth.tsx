@@ -38,6 +38,9 @@ export default function Auth() {
       }
       navigate(from + search, { replace: true });
     } catch (err: any) {
+      if (err.code === 'auth/popup-closed-by-user') {
+        return; // Ignore popup closed error
+      }
       setError(err.message);
     }
   };

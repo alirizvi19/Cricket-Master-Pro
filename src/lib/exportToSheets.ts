@@ -42,6 +42,8 @@ export async function exportTournamentToSheets(tournamentId: string, accessToken
   const sheetData = await createRes.json();
   const spreadsheetId = sheetData.spreadsheetId;
   const sheetUrl = sheetData.spreadsheetUrl;
+  const teamsSheetId = sheetData.sheets[0].properties.sheetId;
+  const playersSheetId = sheetData.sheets[1].properties.sheetId;
 
   // 3. Prepare data for Teams
   const teamsRows = [
@@ -78,7 +80,70 @@ export async function exportTournamentToSheets(tournamentId: string, accessToken
     });
   });
 
-  // 4. Write data
+  // Helper macro for repeating cell formats (Header styling)
+  const getHeaderFormat = (sheetId: number) => ({
+    repeatCell: {
+      range: { sheetId, startRowIndex: 0, endRowIndex: 1 },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: { red: 0.596, green: 0.823, blue: 0.172 }, // #98D22C Brand Lime
+          textFormat: {
+            bold: true,
+            foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 },
+            fontSize: 12
+          },
+          horizontalAlignment: "CENTER",
+          verticalAlignment: "MIDDLE",
+        }
+      },
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+    }
+  });
+
+  // Helper for overall sheet styling (Dark Theme)
+  const getBodyFormat = (sheetId: number) => ({
+    repeatCell: {
+      range: { sheetId, startRowIndex: 1 },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: { red: 0.1, green: 0.1, blue: 0.1 }, // #1a1a1a Dark Gray
+          textFormat: {
+            foregroundColor: { red: 0.9, green: 0.9, blue: 0.9 }, // #e6e6e6 Off-white
+            fontSize: 10
+          },
+          horizontalAlignment: "CENTER",
+          verticalAlignment: "MIDDLE",
+          borders: {
+            top: { style: "SOLID", color: { red: 0.15, green: 0.15, blue: 0.15 } },
+            bottom: { style: "SOLID", color: { red: 0.15, green: 0.15, blue: 0.15 } },
+            left: { style: "SOLID", color: { red: 0.15, green: 0.15, blue: 0.15 } },
+            right: { style: "SOLID", color: { red: 0.15, green: 0.15, blue: 0.15 } }
+          }
+        }
+      },
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,borders)"
+    }
+  });
+
+  // Prepare batch requests array
+  const requests: any[] = [];
+  
+  [teamsSheetId, playersSheetId].forEach(sheetId => {
+    requests.push(getHeaderFormat(sheetId));
+    requests.push(getBodyFormat(sheetId));
+    requests.push({
+      autoResizeDimensions: {
+        dimensions: {
+          sheetId,
+          dimension: "COLUMNS",
+          startIndex: 0,
+          endIndex: 12
+        }
+      }
+    });
+  });
+
+  // 4. Write data and apply formatting
   const updateRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`, {
     method: 'POST',
     headers: {
@@ -102,6 +167,23 @@ export async function exportTournamentToSheets(tournamentId: string, accessToken
 
   if (!updateRes.ok) {
     throw new Error('Failed to update spreadsheet cells');
+  }
+
+  // 5. Apply formatting
+  const formatRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      requests
+    })
+  });
+
+  if (!formatRes.ok) {
+    console.error("Failed to apply spreadsheet formatting", await formatRes.json());
+    // Not throwing here because the data is already written
   }
 
   return sheetUrl;

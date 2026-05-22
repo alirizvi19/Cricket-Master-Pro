@@ -3,7 +3,7 @@ import { auth, db, handleFirestoreError, OperationType, storage } from '@/src/li
 import { useAuth } from '@/src/lib/hooks';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Camera, Save, User, Calendar, Mail, ArrowLeft } from 'lucide-react';
@@ -51,17 +51,26 @@ export default function Profile() {
           playerRole: data.playerRole || '',
           photoUrl: user.photoURL || ''
         });
+        // Now stats are updated and stored into the users collection globally when a match completes
+        // or during initial play/login.
+        setPlayerStats({
+          totalRuns: data.totalRuns || 0,
+          totalWickets: data.totalWickets || 0,
+          matchesPlayed: data.matchesPlayed || 0,
+          highestScore: data.highestScore || 0,
+          centuries: data.centuries || 0,
+          halfCenturies: data.halfCenturies || 0,
+          battingAverage: data.battingAverage || 0,
+          strikeRate: data.strikeRate || 0,
+          bestBowlingFigures: data.bestBowlingFigures || '',
+          economyRate: data.economyRate || 0,
+        });
       } else {
         setProfile({
           ...profile,
           displayName: user.displayName || '',
           photoUrl: user.photoURL || ''
         });
-      }
-      
-      const pSnap = await getDoc(doc(db, 'players', user.uid));
-      if (pSnap.exists()) {
-        setPlayerStats(pSnap.data());
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
@@ -70,43 +79,65 @@ export default function Profile() {
     }
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
     setUploading(true);
-    setUploadProgress(0);
+    setUploadProgress(10);
     setUploadMessage(null);
 
-    const storageRef = ref(storage, `users/${user.uid}/avatar`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    // Using Canvas to resize image and convert to Base64 to bypass Firebase Storage setup requirements
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
 
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Avatar upload failed:", error);
-        setUploadMessage({ type: 'error', text: 'Upload failed. Please try again.' });
-        setUploading(false);
-      },
-      async () => {
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/webp", 0.8);
+        
         try {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
-          await updateProfile(user, { photoURL: url });
-          await setDoc(doc(db, 'users', user.uid), { photoUrl: url }, { merge: true });
-          setProfile(prev => ({ ...prev, photoUrl: url }));
+          setUploadProgress(90);
+          await updateProfile(user, { photoURL: dataUrl });
+          await setDoc(doc(db, 'users', user.uid), { photoUrl: dataUrl }, { merge: true });
+          setProfile(prev => ({ ...prev, photoUrl: dataUrl }));
+          setUploadProgress(100);
           setUploadMessage({ type: 'success', text: 'Avatar updated successfully!' });
-        } catch (err) {
-          console.error("Error saving avatar URL:", err);
-          setUploadMessage({ type: 'error', text: 'Failed to save avatar URL.' });
+        } catch (error) {
+          console.error("Avatar upload failed:", error);
+          setUploadMessage({ type: 'error', text: 'Upload failed. Please try again.' });
         } finally {
           setUploading(false);
         }
-      }
-    );
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      setUploadMessage({ type: 'error', text: 'Failed to read image.' });
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async (e: React.FormEvent) => {

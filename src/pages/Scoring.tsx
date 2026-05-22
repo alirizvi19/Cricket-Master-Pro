@@ -1,7 +1,7 @@
 // src/pages/Scoring.tsx
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/lib/hooks';
-import { doc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, where, getDocs, increment, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, where, getDocs, increment, runTransaction, setDoc } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Settings, User, AlertTriangle, Check, X, ChevronDown, Users, Share2, Activity, Trophy, MessageCircle } from 'lucide-react';
@@ -39,6 +39,7 @@ export default function Scoring() {
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'wickets' | 'boundaries'>('all');
 
   useEffect(() => {
     if (match) {
@@ -221,6 +222,73 @@ export default function Scoring() {
           }
 
           await updateDoc(pRef, update);
+
+          if (d.userId) {
+            const uRef = doc(db, 'users', d.userId);
+            const uSnap = await getDoc(uRef);
+            if (uSnap.exists()) {
+              const ud = uSnap.data();
+              const uMatches = (ud.matchesPlayed || 0) + 1;
+              const uRuns = (ud.totalRuns || 0) + s.runs;
+              const uBallsFaced = (ud.totalBallsFaced || 0) + s.ballsFaced;
+              const uDismissals = (ud.totalDismissals || 0) + (s.isOut ? 1 : 0);
+              const uWickets = (ud.totalWickets || 0) + s.wickets;
+              const uRunsConceded = (ud.totalRunsConceded || 0) + s.runsConceded;
+              const uBallsBowled = (ud.totalBallsBowled || 0) + s.ballsBowled;
+
+              const uUpdate: any = {
+                matchesPlayed: uMatches,
+                totalRuns: uRuns,
+                totalBallsFaced: uBallsFaced,
+                totalDismissals: uDismissals,
+                totalWickets: uWickets,
+                totalRunsConceded: uRunsConceded,
+                totalBallsBowled: uBallsBowled,
+                highestScore: Math.max(ud.highestScore || 0, s.runs),
+                centuries: (ud.centuries || 0) + (s.runs >= 100 ? 1 : 0),
+                halfCenturies: (ud.halfCenturies || 0) + (s.runs >= 50 && s.runs < 100 ? 1 : 0),
+                fiveWicketHauls: (ud.fiveWicketHauls || 0) + (s.wickets >= 5 ? 1 : 0)
+              };
+
+              const cBestStr = ud.bestBowlingFigures || "0/999";
+              const [cuBw, cuBr] = cBestStr.includes('/') ? cBestStr.split('/').map(Number) : [0, 999];
+              if (s.wickets > cuBw || (s.wickets === cuBw && s.runsConceded < cuBr)) {
+                uUpdate.bestBowlingFigures = `${s.wickets}/${s.runsConceded}`;
+              }
+
+              if (uBallsFaced > 0) uUpdate.strikeRate = Number(((uRuns / uBallsFaced) * 100).toFixed(2));
+              if (uDismissals > 0) uUpdate.battingAverage = Number((uRuns / uDismissals).toFixed(2));
+              else if (uDismissals === 0 && uRuns > 0) uUpdate.battingAverage = uRuns; 
+              
+              if (uBallsBowled > 0) {
+                uUpdate.economyRate = Number(((uRunsConceded / uBallsBowled) * 6).toFixed(2));
+                if (uWickets > 0) uUpdate.bowlingAverage = Number((uRunsConceded / uWickets).toFixed(2));
+              }
+
+              await updateDoc(uRef, uUpdate);
+            } else {
+              // Create user doc if it doesn't exist
+              const uUpdate: any = {
+                matchesPlayed: 1,
+                totalRuns: s.runs,
+                totalBallsFaced: s.ballsFaced,
+                totalDismissals: s.isOut ? 1 : 0,
+                totalWickets: s.wickets,
+                totalRunsConceded: s.runsConceded,
+                totalBallsBowled: s.ballsBowled,
+                highestScore: s.runs,
+                centuries: s.runs >= 100 ? 1 : 0,
+                halfCenturies: s.runs >= 50 && s.runs < 100 ? 1 : 0,
+                fiveWicketHauls: s.wickets >= 5 ? 1 : 0,
+                bestBowlingFigures: `${s.wickets}/${s.runsConceded}`,
+                strikeRate: s.ballsFaced > 0 ? Number(((s.runs / s.ballsFaced) * 100).toFixed(2)) : 0,
+                battingAverage: s.isOut ? s.runs : s.runs,
+                economyRate: s.ballsBowled > 0 ? Number(((s.runsConceded / s.ballsBowled) * 6).toFixed(2)) : 0,
+                bowlingAverage: s.wickets > 0 ? Number((s.runsConceded / s.wickets).toFixed(2)) : 0
+              };
+              await setDoc(uRef, uUpdate, { merge: true });
+            }
+          }
         }
       }
 
@@ -943,7 +1011,25 @@ export default function Scoring() {
         </div>
         {/* Ball by Ball Commentary Log */}
         <div className="flex-1 overflow-y-auto bg-[#1A1A1A] p-2 space-y-1 custom-scrollbar border-t border-white/5 flex flex-col">
-          {balls.filter(b => b.innings === match.currentInnings).map((ball, i) => (
+          <div className="flex items-center justify-between px-2 pt-2 pb-3 mb-1 border-b border-white/5 mx-1">
+            <span className="text-[10px] font-black uppercase text-text-dim tracking-widest pl-1">Commentary</span>
+            <div className="flex gap-1 bg-[#242424] p-1 rounded-lg border border-white/5">
+              {(['all', 'wickets', 'boundaries'] as const).map(filter => (
+                <button 
+                  key={filter}
+                  onClick={() => setTimelineFilter(filter)}
+                  className={`px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-md transition-all ${timelineFilter === filter ? 'bg-brand text-black shadow-sm' : 'text-text-dim hover:text-white hover:bg-white/5'}`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
+          {balls.filter(b => b.innings === match.currentInnings).filter(b => {
+             if (timelineFilter === 'wickets') return b.isWicket;
+             if (timelineFilter === 'boundaries') return b.runs >= 4;
+             return true;
+          }).map((ball, i) => (
             <div key={`log-${ball.id || i}`} className="flex items-center gap-3 p-2 bg-[#242424] rounded-xl hover:bg-white/5 transition-colors border border-white/5">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black italic shrink-0
                 ${ball.isWicket ? 'bg-red-500 text-white' : 
@@ -989,9 +1075,13 @@ export default function Scoring() {
               </div>
             </div>
           ))}
-          {balls.filter(b => b.innings === match.currentInnings).length === 0 && (
+          {balls.filter(b => b.innings === match.currentInnings).filter(b => {
+             if (timelineFilter === 'wickets') return b.isWicket;
+             if (timelineFilter === 'boundaries') return b.runs >= 4;
+             return true;
+          }).length === 0 && (
             <div className="text-[10px] font-bold uppercase tracking-widest text-text-dim text-center py-4">
-              End of innings or no balls bowled yet.
+              {timelineFilter === 'all' ? 'End of innings or no balls bowled yet.' : `No ${timelineFilter} logged yet.`}
             </div>
           )}
         </div>
