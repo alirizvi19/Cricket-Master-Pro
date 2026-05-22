@@ -3,7 +3,7 @@ import { auth, db, handleFirestoreError, OperationType, storage } from '@/src/li
 import { useAuth } from '@/src/lib/hooks';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Camera, Save, User, Calendar, Mail, ArrowLeft } from 'lucide-react';
@@ -98,13 +98,19 @@ export default function Profile() {
     if (!user) return;
 
     setUploading(true);
-    setUploadProgress(90);
+    setUploadProgress(10);
     setUploadMessage(null);
 
     try {
-      await updateProfile(user, { photoURL: croppedImage });
-      await setDoc(doc(db, 'users', user.uid), { photoUrl: croppedImage }, { merge: true });
-      setProfile(prev => ({ ...prev, photoUrl: croppedImage }));
+      const storageRef = ref(storage, `users/${user.uid}/avatar`);
+      await uploadString(storageRef, croppedImage, 'data_url');
+      setUploadProgress(70);
+      const url = await getDownloadURL(storageRef);
+      setUploadProgress(90);
+      
+      await updateProfile(user, { photoURL: url });
+      await setDoc(doc(db, 'users', user.uid), { photoUrl: url }, { merge: true });
+      setProfile(prev => ({ ...prev, photoUrl: url }));
       setUploadProgress(100);
       setUploadMessage({ type: 'success', text: 'Avatar updated successfully!' });
     } catch (error) {

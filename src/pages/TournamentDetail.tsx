@@ -79,7 +79,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import Loading from "../components/Loading";
 import { useNavigate } from "react-router-dom";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, uploadString, getDownloadURL } from "firebase/storage";
 import { storage } from "@/src/lib/firebase";
 import { getAccessToken, googleSignIn } from "@/src/lib/authGoogle";
 import { exportTournamentToSheets } from "@/src/lib/exportToSheets";
@@ -429,14 +429,6 @@ export default function TournamentDetail() {
 
   return (
     <div className="w-full space-y-6 sm:space-y-8 md:space-y-12 px-2 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-8 md:pb-12">
-      {cropPlayerPhoto && (
-        <ImageCropper
-          imageSrc={cropPlayerPhoto.src}
-          onCropCompleteAction={handleApplyPlayerCrop}
-          onCancel={() => setCropPlayerPhoto(null)}
-          aspectRatio={1}
-        />
-      )}
       <div className="flex items-center justify-between">
         <Link
           to="/dashboard"
@@ -1506,9 +1498,13 @@ function TeamsSection({
     setUploadingPlayerId(playerId);
 
     try {
+      const storageRef = ref(storage, `players/${playerId}/${Date.now()}_avatar.jpg`);
+      await uploadString(storageRef, croppedImage, 'data_url');
+      const photoUrl = await getDownloadURL(storageRef);
+
       // Update player document
       try {
-        await updateDoc(doc(db, "players", playerId), { photoUrl: croppedImage });
+        await updateDoc(doc(db, "players", playerId), { photoUrl });
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, `players/${playerId}`);
       }
@@ -1520,7 +1516,7 @@ function TeamsSection({
         if (teamSnap.exists()) {
           const currentPlayers = teamSnap.data().players || [];
           const updatedPlayers = currentPlayers.map((p: any) =>
-            p.id === playerId ? { ...p, photoUrl: croppedImage } : p,
+            p.id === playerId ? { ...p, photoUrl } : p,
           );
           await updateDoc(teamRef, { players: updatedPlayers });
         }
@@ -1896,6 +1892,14 @@ function TeamsSection({
 
   return (
     <div className="space-y-6">
+      {cropPlayerPhoto && (
+        <ImageCropper
+          imageSrc={cropPlayerPhoto.src}
+          onCropCompleteAction={handleApplyPlayerCrop}
+          onCancel={() => setCropPlayerPhoto(null)}
+          aspectRatio={1}
+        />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white/5 p-5 px-8 rounded-3xl border border-white/5 shadow-2xl backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-brand/10 border border-brand/20 rounded-2xl flex items-center justify-center text-brand">

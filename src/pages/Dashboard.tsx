@@ -9,7 +9,7 @@ import { motion } from 'motion/react';
 import Loading from '../components/Loading';
 
 export default function Dashboard() {
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { user, dbUser, loading: authLoading, isAdmin } = useAuth();
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,7 @@ export default function Dashboard() {
         userId: user?.uid,
         teamId: invite.teamId,
         role: 'batsman',
-        photoUrl: user?.photoURL || null,
+        photoUrl: dbUser?.photoUrl || user?.photoURL || null,
         matchesPlayed: 0,
         totalRuns: 0,
         centuries: 0,
@@ -69,7 +69,7 @@ export default function Dashboard() {
 
       // 2. Add to team
       await updateDoc(doc(db, 'teams', invite.teamId), {
-        players: arrayUnion({ id: playerRef.id, name: user?.displayName || user?.email?.split('@')[0], photoUrl: user?.photoURL || null })
+        players: arrayUnion({ id: playerRef.id, name: user?.displayName || user?.email?.split('@')[0], photoUrl: dbUser?.photoUrl || user?.photoURL || null })
       });
 
       // 3. Mark invite as accepted
