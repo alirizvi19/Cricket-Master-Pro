@@ -94,7 +94,7 @@ const getShareableUrl = (path: string) => {
 
 export default function TournamentDetail() {
   const { id } = useParams();
-  const { user, isAdmin, userRole } = useAuth();
+  const { user, dbUser, isAdmin, userRole } = useAuth();
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
@@ -199,7 +199,7 @@ export default function TournamentDetail() {
         tournamentId: joinConfirmation.tournamentId,
         userId: user.uid,
         userName: user.displayName || user.email?.split("@")[0],
-        userPhotoUrl: user.photoURL || null,
+        userPhotoUrl: dbUser?.photoUrl || user.photoURL || null,
         status: "pending",
         createdAt: new Date().toISOString(),
       });
@@ -1444,7 +1444,7 @@ function TeamsSection({
   const [inviteEmail, setInviteEmail] = useState("");
   const [userRequests, setUserRequests] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
-  const { user } = useAuth();
+  const { user, dbUser } = useAuth();
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerRole, setNewPlayerRole] = useState<
     "batsman" | "bowler" | "all-rounder"
@@ -1690,7 +1690,7 @@ function TeamsSection({
         tournamentId: teams[0].tournamentId,
         userId: user.uid,
         userName: user.displayName || user.email?.split("@")[0],
-        userPhotoUrl: user.photoURL || null,
+        userPhotoUrl: dbUser?.photoUrl || user.photoURL || null,
         status: "pending",
         createdAt: new Date().toISOString(),
       });

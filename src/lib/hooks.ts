@@ -5,6 +5,7 @@ import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
+  const [dbUser, setDbUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string>('viewer');
@@ -24,8 +25,11 @@ export function useAuth() {
           (userDoc) => {
             if (userDoc.exists()) {
               const data = userDoc.data();
+              setDbUser(data);
               setIsAdmin(data.role === 'admin' || user.email === 'ali.ammar.rizvi13@gmail.com');
               setUserRole(user.email === 'ali.ammar.rizvi13@gmail.com' ? 'admin' : (data.role || 'viewer'));
+            } else {
+              setDbUser(null);
             }
           },
           (error) => {
@@ -52,5 +56,5 @@ export function useAuth() {
     };
   }, []);
 
-  return { user, loading, isAdmin, userRole };
+  return { user, dbUser, loading, isAdmin, userRole };
 }

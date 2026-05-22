@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, dbUser, loading, isAdmin } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -41,7 +41,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-4 border-l border-white/10 pl-8">
                 <Link to="/profile" className="flex items-center gap-2 group">
                   <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden transition-all group-hover:border-brand">
-                    {user.photoURL ? (
+                    {dbUser?.photoUrl ? (
+                      <img src={dbUser.photoUrl} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : user.photoURL ? (
                       <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <User size={14} className="text-brand" />
@@ -111,7 +113,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <div className="bg-white/5 border border-white/5 rounded-xl p-4 mb-8">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-white/5 border border-brand/20 flex items-center justify-center overflow-hidden">
-                          {user.photoURL ? (
+                          {dbUser?.photoUrl ? (
+                            <img src={dbUser.photoUrl} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : user.photoURL ? (
                             <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
                             <User className="text-brand w-5 h-5" />

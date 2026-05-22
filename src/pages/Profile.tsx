@@ -49,7 +49,7 @@ export default function Profile() {
           location: data.location || '',
           bio: data.bio || '',
           playerRole: data.playerRole || '',
-          photoUrl: user.photoURL || ''
+          photoUrl: data.photoUrl || user.photoURL || ''
         });
         // Now stats are updated and stored into the users collection globally when a match completes
         // or during initial play/login.
@@ -119,7 +119,6 @@ export default function Profile() {
         
         try {
           setUploadProgress(90);
-          await updateProfile(user, { photoURL: dataUrl });
           await setDoc(doc(db, 'users', user.uid), { photoUrl: dataUrl }, { merge: true });
           setProfile(prev => ({ ...prev, photoUrl: dataUrl }));
           setUploadProgress(100);
