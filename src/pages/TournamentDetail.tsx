@@ -54,6 +54,7 @@ import {
   Crown,
   TrendingUp,
 } from "lucide-react";
+import ImageCropper from "../components/ImageCropper";
 import Markdown from "react-markdown";
 import {
   PieChart,
@@ -428,6 +429,14 @@ export default function TournamentDetail() {
 
   return (
     <div className="w-full space-y-6 sm:space-y-8 md:space-y-12 px-2 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-8 md:pb-12">
+      {cropPlayerPhoto && (
+        <ImageCropper
+          imageSrc={cropPlayerPhoto.src}
+          onCropCompleteAction={handleApplyPlayerCrop}
+          onCancel={() => setCropPlayerPhoto(null)}
+          aspectRatio={1}
+        />
+      )}
       <div className="flex items-center justify-between">
         <Link
           to="/dashboard"
@@ -1488,6 +1497,46 @@ function TeamsSection({
   const [uploadingPlayerId, setUploadingPlayerId] = useState<string | null>(
     null,
   );
+  const [cropPlayerPhoto, setCropPlayerPhoto] = useState<{ src: string, playerId: string, teamId: string } | null>(null);
+
+  const handleApplyPlayerCrop = async (croppedImage: string) => {
+    if (!cropPlayerPhoto) return;
+    const { playerId, teamId } = cropPlayerPhoto;
+    setCropPlayerPhoto(null);
+    setUploadingPlayerId(playerId);
+
+    try {
+      // Update player document
+      try {
+        await updateDoc(doc(db, "players", playerId), { photoUrl: croppedImage });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `players/${playerId}`);
+      }
+
+      // Update team document (denormalized cache)
+      const teamRef = doc(db, "teams", teamId);
+      try {
+        const teamSnap = await getDoc(teamRef);
+        if (teamSnap.exists()) {
+          const currentPlayers = teamSnap.data().players || [];
+          const updatedPlayers = currentPlayers.map((p: any) =>
+            p.id === playerId ? { ...p, photoUrl: croppedImage } : p,
+          );
+          await updateDoc(teamRef, { players: updatedPlayers });
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `teams/${teamId}`);
+      }
+      
+      // Update local state if needed
+      if (onAddPlayer) onAddPlayer();
+      setUploadingPlayerId(null);
+    } catch (err) {
+      console.error("Photo upload failed", err);
+      alert("Failed to save photo.");
+      setUploadingPlayerId(null);
+    }
+  };
 
   const handleUpdateStats = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1805,73 +1854,20 @@ function TeamsSection({
     file: File,
   ) => {
     try {
-      setUploadingPlayerId(playerId);
       const reader = new FileReader();
       reader.onload = (event) => {
-        const img = new Image();
-        img.onload = async () => {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          const MAX_WIDTH = 400;
-          const MAX_HEIGHT = 400;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          const photoUrl = canvas.toDataURL("image/webp", 0.8);
-
-          // Update player document
-          try {
-            await updateDoc(doc(db, "players", playerId), { photoUrl });
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, `players/${playerId}`);
-          }
-
-          // Update team document (denormalized cache)
-          const teamRef = doc(db, "teams", teamId);
-          try {
-            const teamSnap = await getDoc(teamRef);
-            if (teamSnap.exists()) {
-              const currentPlayers = teamSnap.data().players || [];
-              const updatedPlayers = currentPlayers.map((p: any) =>
-                p.id === playerId ? { ...p, photoUrl } : p,
-              );
-              await updateDoc(teamRef, { players: updatedPlayers });
-            }
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, `teams/${teamId}`);
-          }
-          
-          // Update local state if needed
-          if (onAddPlayer) onAddPlayer();
-          setUploadingPlayerId(null);
-        };
-        img.src = event.target?.result as string;
+        setCropPlayerPhoto({
+          src: event.target?.result as string,
+          playerId,
+          teamId,
+        });
       };
       reader.onerror = () => {
         alert("Failed to read image.");
-        setUploadingPlayerId(null);
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      console.error("Photo upload failed", err);
-      alert("Failed to upload photo. Please check your Firebase Storage settings and rules.");
-      setUploadingPlayerId(null);
+      console.error("Photo reading failed", err);
     }
   };
 

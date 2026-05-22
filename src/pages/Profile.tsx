@@ -9,6 +9,7 @@ import { motion } from 'motion/react';
 import { Camera, Save, User, Calendar, Mail, ArrowLeft } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import Loading from '../components/Loading';
+import ImageCropper from '../components/ImageCropper';
 
 export default function Profile() {
   const { user, loading: authLoading } = useAuth();
@@ -25,6 +26,7 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadMessage, setUploadMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -79,64 +81,38 @@ export default function Profile() {
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    setUploading(true);
-    setUploadProgress(10);
-    setUploadMessage(null);
-
-    // Using Canvas to resize image and convert to Base64 to bypass Firebase Storage setup requirements
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = async () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const MAX_WIDTH = 400;
-        const MAX_HEIGHT = 400;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL("image/webp", 0.8);
-        
-        try {
-          setUploadProgress(90);
-          await setDoc(doc(db, 'users', user.uid), { photoUrl: dataUrl }, { merge: true });
-          setProfile(prev => ({ ...prev, photoUrl: dataUrl }));
-          setUploadProgress(100);
-          setUploadMessage({ type: 'success', text: 'Avatar updated successfully!' });
-        } catch (error) {
-          console.error("Avatar upload failed:", error);
-          setUploadMessage({ type: 'error', text: 'Upload failed. Please try again.' });
-        } finally {
-          setUploading(false);
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.onerror = () => {
-      setUploadMessage({ type: 'error', text: 'Failed to read image.' });
-      setUploading(false);
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
     };
     reader.readAsDataURL(file);
+    e.target.value = ''; // clear input
+  };
+
+  const handleCropComplete = async (croppedImage: string) => {
+    setCropImageSrc(null);
+    if (!user) return;
+
+    setUploading(true);
+    setUploadProgress(90);
+    setUploadMessage(null);
+
+    try {
+      await updateProfile(user, { photoURL: croppedImage });
+      await setDoc(doc(db, 'users', user.uid), { photoUrl: croppedImage }, { merge: true });
+      setProfile(prev => ({ ...prev, photoUrl: croppedImage }));
+      setUploadProgress(100);
+      setUploadMessage({ type: 'success', text: 'Avatar updated successfully!' });
+    } catch (error) {
+      console.error("Avatar upload failed:", error);
+      setUploadMessage({ type: 'error', text: 'Upload failed. Please try again.' });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -174,6 +150,14 @@ export default function Profile() {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 sm:space-y-8 md:space-y-12 px-4 sm:px-6 md:px-8 pt-16 md:pt-24 pb-8 md:pb-12">
+      {cropImageSrc && (
+        <ImageCropper
+          imageSrc={cropImageSrc}
+          onCropCompleteAction={handleCropComplete}
+          onCancel={() => setCropImageSrc(null)}
+          aspectRatio={1}
+        />
+      )}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
         <div className="space-y-4">
           <Link to="/dashboard" className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-text-dim hover:text-white transition-colors">
