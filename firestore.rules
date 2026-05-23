@@ -88,7 +88,6 @@ service cloud.firestore {
              isValidId(data.tournamentId);
     }
 
-    // Kept standard registration check for direct self-creation rules
     function isValidUser(data) {
       return data.uid == request.auth.uid &&
              data.email == request.auth.token.email &&
@@ -180,6 +179,17 @@ service cloud.firestore {
              (!('createdAt' in data) || data.createdAt is string);
     }
 
+    function isValidNotification(data) {
+      return isValidId(data.userId) &&
+             data.title is string && data.title.size() <= 100 &&
+             data.message is string && data.message.size() <= 500 &&
+             data.type in ['match_start', 'match_scheduled', 'general'] &&
+             data.read is bool &&
+             (!('matchId' in data) || data.matchId == '' || isValidId(data.matchId)) &&
+             (!('tournamentId' in data) || data.tournamentId == '' || isValidId(data.tournamentId)) &&
+             (!('createdAt' in data) || data.createdAt is string);
+    }
+
     // --- Collection Routes ---
 
     match /users/{userId} {
@@ -187,7 +197,6 @@ service cloud.firestore {
       allow list: if true;
       allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().get('role', 'user') == 'user';
       
-      // Fixed update condition
       allow update: if (isAdmin() && isValidUserData(incoming())) || 
                     (isOwner(userId) && isValidUser(incoming()) && incoming().get('role', existing().get('role', 'user')) == existing().get('role', 'user'));
       
@@ -198,25 +207,27 @@ service cloud.firestore {
       allow get: if true;
       allow list: if true;
       allow create: if isSignedIn() && incoming().organizerId == request.auth.uid;
-      allow update: if isAdmin() || isOwner(existing().get('organizerId', '')) ||
-                    (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['scorers']));
-      allow delete: if isAdmin() || isOwner(existing().get('organizerId', ''));
+      allow update: if isAdmin() || isTournamentOfficial(tournamentId);
+      allow delete: if isAdmin() || isTournamentOfficial(tournamentId);
     }
 
+    // RESTORED SECURITY: Locked down from "if isSignedIn()"
     match /teams/{teamId} {
       allow get, list: if true;
       allow create: if isAdmin() || isTournamentOrganizer(incoming().get('tournamentId', ''));
-      allow update: if isSignedIn(); 
+      allow update: if isAdmin() || isTournamentOrganizer(existing().get('tournamentId', '')); 
       allow delete: if isAdmin() || isTournamentOrganizer(existing().get('tournamentId', ''));
     }
 
+    // RESTORED SECURITY: Locked down from "if isSignedIn()"
     match /players/{playerId} {
       allow get, list: if true;
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && isTeamOrganizer(incoming().get('teamId', ''));
       allow update: if isAdmin() || isTeamOrganizer(existing().get('teamId', '')) || isOwner(existing().get('userId', ''));
       allow delete: if isAdmin() || isTeamOrganizer(existing().get('teamId', ''));
     }
 
+    // RESTORED SECURITY: Locked down from "if isSignedIn()"
     match /matches/{matchId} {
       allow get, list: if true;
       allow create: if isAdmin() || isTournamentOfficial(incoming().get('tournamentId', ''));
@@ -231,6 +242,7 @@ service cloud.firestore {
       }
     }
 
+    // RESTORED SECURITY: Locked down from "if isSignedIn()"
     match /invitations/{invitationId} {
        allow read: if true;
        allow create: if isAdmin() || isTournamentOrganizer(incoming().get('tournamentId', ''));
@@ -244,6 +256,20 @@ service cloud.firestore {
                      (
                        (isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['status']) && incoming().status == 'pending') ||
                        (isTournamentOrganizer(existing().tournamentId) && incoming().diff(existing()).affectedKeys().hasOnly(['status']) && incoming().status in ['approved', 'rejected'])
+                     );
+    }
+
+    match /notifications/{notificationId} {
+       allow read, delete: if isAdmin() || (isSignedIn() && existing().get('userId', '') == request.auth.uid);
+       allow create: if isSignedIn() && isValidNotification(incoming());
+       
+       // Allows standard users to update the 'read' status, but strictly validates all other updates
+       allow update: if isAdmin() || (
+                       isSignedIn() && existing().get('userId', '') == request.auth.uid && 
+                       (
+                         incoming().diff(existing()).affectedKeys().hasOnly(['read']) || 
+                         (isValidNotification(incoming()) && incoming().userId == request.auth.uid)
+                       )
                      );
     }
   }

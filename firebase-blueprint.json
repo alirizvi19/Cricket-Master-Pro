@@ -134,6 +134,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["teamId", "userId", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification for match starts, updates, and key events",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "matchId": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["match_start", "match_scheduled", "general"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
     }
   },
   "firestore": {
@@ -168,6 +184,10 @@
     "/joinRequests/{requestId}": {
       "schema": "JoinRequest",
       "description": "Requests to join teams"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Real-time user notifications"
     }
   }
 }

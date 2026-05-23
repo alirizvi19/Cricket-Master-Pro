@@ -1,6 +1,7 @@
 // src/pages/TournamentDetail.tsx
 import { db, handleFirestoreError, OperationType } from "@/src/lib/firebase";
 import { useAuth } from "@/src/lib/hooks";
+import { sendMatchStartNotifications } from "@/src/lib/notifications";
 import {
   doc,
   getDoc,
@@ -54,8 +55,9 @@ import {
   Crown,
   TrendingUp,
 } from "lucide-react";
-import ImageCropper from "../components/ImageCropper";
+import ImageCropper, { compressAndResizeFile } from "../components/ImageCropper";
 import Markdown from "react-markdown";
+import MatchAnalyticsChart from "../components/MatchAnalyticsChart";
 import {
   PieChart,
   Pie,
@@ -124,6 +126,115 @@ export default function TournamentDetail() {
     teamName: string;
     tournamentId: string;
   } | null>(null);
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [cropTournamentLogo, setCropTournamentLogo] = useState<string | null>(null);
+
+  const [uploadingNewTeamLogo, setUploadingNewTeamLogo] = useState(false);
+  const [cropNewTeamLogo, setCropNewTeamLogo] = useState<string | null>(null);
+
+  const handleApplyNewTeamLogoCrop = async (croppedImage: string) => {
+    setCropNewTeamLogo(null);
+    setUploadingNewTeamLogo(true);
+
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 3000): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error("Timeout: Operation took too long."));
+        }, timeoutMs);
+
+        promise
+          .then((res) => {
+            clearTimeout(timer);
+            resolve(res);
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    };
+
+    try {
+      let finalUrl = croppedImage;
+      try {
+        const storageRef = ref(storage, `teams/temp/${Date.now()}_logo.jpg`);
+        await withTimeout(uploadString(storageRef, croppedImage, 'data_url'), 3000);
+        finalUrl = await withTimeout(getDownloadURL(storageRef), 3000);
+      } catch (err) {
+        console.warn("Storage upload failed for new team logo base64 fallback:", err);
+      }
+      setNewTeamLogoUrl(finalUrl);
+    } catch (e) {
+      console.error("New team logo apply failed", e);
+    } finally {
+      setUploadingNewTeamLogo(false);
+    }
+  };
+
+  const handleTournamentLogoSelect = async (file: File) => {
+    setUploadingLogo(true);
+    try {
+      const compressedSrc = await compressAndResizeFile(file, 800, 0.85);
+      setCropTournamentLogo(compressedSrc);
+    } catch (err) {
+      console.error("Tournament logo pre-compression failed, using standard reader instead:", err);
+      try {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setCropTournamentLogo(event.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } catch (innerErr) {
+        alert("Failed to read tournament logo image.");
+      }
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleApplyLogoCrop = async (croppedImage: string) => {
+    if (!id) return;
+    setCropTournamentLogo(null);
+    setUploadingLogo(true);
+
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 3000): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error("Timeout: Operation took too long."));
+        }, timeoutMs);
+
+        promise
+          .then((res) => {
+            clearTimeout(timer);
+            resolve(res);
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    };
+
+    try {
+      let logoUrl = croppedImage;
+      try {
+        const storageRef = ref(storage, `tournaments/${id}/${Date.now()}_logo.jpg`);
+        await withTimeout(uploadString(storageRef, croppedImage, 'data_url'), 3000);
+        logoUrl = await withTimeout(getDownloadURL(storageRef), 3000);
+      } catch (storageError) {
+        console.warn("Firebase Storage upload failed or timed out for tournament logo, using base64 data URI directly:", storageError);
+      }
+
+      await updateDoc(doc(db, "tournaments", id), { logoUrl });
+      setTournament((prev: any) => ({ ...prev, logoUrl }));
+    } catch (err) {
+      console.error("Tournament logo save failed", err);
+      alert("Failed to save tournament logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   useEffect(() => {
     fetchTournamentData();
@@ -429,6 +540,22 @@ export default function TournamentDetail() {
 
   return (
     <div className="w-full space-y-6 sm:space-y-8 md:space-y-12 px-2 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-8 md:pb-12">
+      {cropTournamentLogo && (
+        <ImageCropper
+          imageSrc={cropTournamentLogo}
+          onCropCompleteAction={handleApplyLogoCrop}
+          onCancel={() => setCropTournamentLogo(null)}
+          aspectRatio={1}
+        />
+      )}
+      {cropNewTeamLogo && (
+        <ImageCropper
+          imageSrc={cropNewTeamLogo}
+          onCropCompleteAction={handleApplyNewTeamLogoCrop}
+          onCancel={() => setCropNewTeamLogo(null)}
+          aspectRatio={1}
+        />
+      )}
       <div className="flex items-center justify-between">
         <Link
           to="/dashboard"
@@ -450,32 +577,80 @@ export default function TournamentDetail() {
       <header className="relative">
         <div className="absolute -top-24 -left-24 w-64 h-64 bg-brand/5 blur-[100px] rounded-full pointer-events-none" />
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 sm:gap-8 relative z-10">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <h1 className="text-[50px] leading-[60px] font-black uppercase tracking-tighter text-white italic break-words max-w-full">
-                {tournament.name}
-              </h1>
-              <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
-                <div
-                  className={`w-2 h-2 rounded-full ${tournament.status === "ongoing" ? "bg-brand" : "bg-text-dim"}`}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8 w-full max-w-full">
+            {/* Elegant Tournament Logo upload & display */}
+            <div className="relative group/logo flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl backdrop-blur-md">
+              {tournament.logoUrl ? (
+                <img
+                  src={tournament.logoUrl}
+                  alt="Tournament Logo"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
                 />
-                <span className="text-[9px] sm:text-[10px] font-black uppercase italic text-white tracking-widest">
-                  {tournament.status}
-                </span>
-              </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-text-dim text-center p-3">
+                  <Trophy size={32} className="text-white/20 mb-1" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-white/30 leading-none">No Logo</span>
+                </div>
+              )}
+
+              {/* Hover overlay for Organizer to change the logo */}
+              {isOrganizer && (
+                <label className="absolute inset-0 bg-black/75 opacity-0 group-hover/logo:opacity-100 transition-all duration-200 flex flex-col items-center justify-center cursor-pointer text-brand text-center select-none">
+                  <Camera size={22} className="mb-1" />
+                  <span className="text-[8px] font-black uppercase tracking-widest leading-none">
+                    {tournament.logoUrl ? "Update" : "Upload"}
+                  </span>
+                  <span className="text-[6px] text-white/40 uppercase mt-1 leading-none">Logo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleTournamentLogoSelect(file);
+                      }
+                    }}
+                  />
+                </label>
+              )}
+
+              {/* Loader indicator when uploading */}
+              {uploadingLogo && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
             </div>
-            <div className="flex flex-wrap items-center gap-6 text-text-dim font-bold text-[10px] uppercase tracking-[0.2em] italic">
-              <div className="flex items-center gap-2 p-1 px-3 bg-white/5 rounded-lg border border-white/5">
-                <Activity size={12} className="text-brand" />
-                {tournament.location}
+
+            <div className="space-y-4 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                <h1 className="text-[36px] sm:text-[44px] md:text-[50px] leading-none font-black uppercase tracking-tighter text-white italic break-words max-w-full">
+                  {tournament.name}
+                </h1>
+                <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
+                  <div
+                    className={`w-2 h-2 rounded-full ${tournament.status === "ongoing" ? "bg-brand" : "bg-text-dim"}`}
+                  />
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase italic text-white tracking-widest">
+                    {tournament.status}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 p-1 px-3 bg-white/5 rounded-lg border border-white/5">
-                <User size={12} className="text-brand" />
-                Organizer: {tournament.organizerName}
-              </div>
-              <div className="flex items-center gap-2 p-1 px-3 bg-white/5 rounded-lg border border-white/5">
-                <Plus size={12} className="text-brand" />
-                {tournament.oversPerMatch} Overs
+              <div className="flex flex-wrap items-center gap-4 text-text-dim font-bold text-[10px] uppercase tracking-[0.2em] italic">
+                <div className="flex items-center gap-2 p-1 px-3 bg-white/5 rounded-lg border border-white/5">
+                  <Activity size={12} className="text-brand" />
+                  {tournament.location}
+                </div>
+                <div className="flex items-center gap-2 p-1 px-3 bg-white/5 rounded-lg border border-white/5">
+                  <User size={12} className="text-brand" />
+                  Organizer: {tournament.organizerName}
+                </div>
+                <div className="flex items-center gap-2 p-1 px-3 bg-white/5 rounded-lg border border-white/5">
+                  <Plus size={12} className="text-brand" />
+                  {tournament.oversPerMatch} Overs
+                </div>
               </div>
             </div>
           </div>
@@ -609,6 +784,7 @@ export default function TournamentDetail() {
             tournamentId={id!}
             onUpdate={fetchTournamentData}
             defaultOvers={tournament.oversPerMatch}
+            tournamentName={tournament?.name || ""}
           />
         )}
         {activeTab === ("analytics" as any) && (
@@ -666,16 +842,55 @@ export default function TournamentDetail() {
                   />
                 </div>
                 <div className="col-span-2 space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
-                    Team Logo URL
-                  </label>
-                  <input
-                    type="url"
-                    value={newTeamLogoUrl}
-                    onChange={(e) => setNewTeamLogoUrl(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand"
-                    placeholder="https://..."
-                  />
+                  <div className="flex items-center justify-between px-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
+                      Team Logo
+                    </label>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-brand flex items-center gap-1 cursor-pointer hover:underline">
+                      <Camera size={12} />
+                      {uploadingNewTeamLogo ? "Uploading..." : "Upload File"}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        disabled={uploadingNewTeamLogo}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const compressedSrc = await compressAndResizeFile(file, 800, 0.85);
+                              setCropNewTeamLogo(compressedSrc);
+                            } catch (err) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                setCropNewTeamLogo(event.target?.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={newTeamLogoUrl}
+                      onChange={(e) => setNewTeamLogoUrl(e.target.value)}
+                      className="w-full pl-4 pr-12 py-3 bg-white/5 border border-white/5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand text-xs"
+                      placeholder="Or enter logo URL..."
+                    />
+                    {newTeamLogoUrl && (
+                      <div className="absolute right-2 top-1.5 w-9 h-9 rounded-lg overflow-hidden border border-white/10 shadow bg-white/5">
+                        <img 
+                          src={newTeamLogoUrl} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1491,16 +1706,106 @@ function TeamsSection({
   );
   const [cropPlayerPhoto, setCropPlayerPhoto] = useState<{ src: string, playerId: string, teamId: string } | null>(null);
 
+  const [uploadingTeamId, setUploadingTeamId] = useState<string | null>(null);
+  const [cropTeamLogo, setCropTeamLogo] = useState<{ src: string, teamId: string } | null>(null);
+
+  const [uploadingEditLogo, setUploadingEditLogo] = useState(false);
+  const [cropEditTeamLogo, setCropEditTeamLogo] = useState<string | null>(null);
+
+  const handleApplyTeamLogoCrop = async (croppedImage: string) => {
+    if (!cropTeamLogo) return;
+    const { teamId } = cropTeamLogo;
+    setCropTeamLogo(null);
+    setUploadingTeamId(teamId);
+
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 3000): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error("Timeout: Operation took too long."));
+        }, timeoutMs);
+
+        promise
+          .then((res) => {
+            clearTimeout(timer);
+            resolve(res);
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    };
+
+    try {
+      let logoUrl = croppedImage;
+      try {
+        const storageRef = ref(storage, `teams/${teamId}/${Date.now()}_logo.jpg`);
+        await withTimeout(uploadString(storageRef, croppedImage, 'data_url'), 3000);
+        logoUrl = await withTimeout(getDownloadURL(storageRef), 3000);
+      } catch (storageError) {
+        console.warn("Firebase Storage upload failed or timed out for team logo, using base64 data URI directly:", storageError);
+      }
+
+      await updateDoc(doc(db, "teams", teamId), { logoUrl });
+      if (onAddPlayer) onAddPlayer();
+    } catch (err) {
+      console.error("Team logo update failed", err);
+      alert("Failed to update team logo.");
+    } finally {
+      setUploadingTeamId(null);
+    }
+  };
+
+  const handleApplyEditLogoCrop = async (croppedImage: string) => {
+    setCropEditTeamLogo(null);
+    setUploadingEditLogo(true);
+    let finalUrl = croppedImage;
+    try {
+      if (showEditTeamModal?.id) {
+        const storageRef = ref(storage, `teams/${showEditTeamModal.id}/${Date.now()}_logo.jpg`);
+        await uploadString(storageRef, croppedImage, 'data_url');
+        finalUrl = await getDownloadURL(storageRef);
+      }
+    } catch (err) {
+      console.warn("Storage upload failed for edit team logo, using base64:", err);
+    }
+    setEditTeamLogoUrl(finalUrl);
+    setUploadingEditLogo(false);
+  };
+
   const handleApplyPlayerCrop = async (croppedImage: string) => {
     if (!cropPlayerPhoto) return;
     const { playerId, teamId } = cropPlayerPhoto;
     setCropPlayerPhoto(null);
     setUploadingPlayerId(playerId);
 
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 3000): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error("Timeout: Operation took too long."));
+        }, timeoutMs);
+
+        promise
+          .then((res) => {
+            clearTimeout(timer);
+            resolve(res);
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    };
+
     try {
-      const storageRef = ref(storage, `players/${playerId}/${Date.now()}_avatar.jpg`);
-      await uploadString(storageRef, croppedImage, 'data_url');
-      const photoUrl = await getDownloadURL(storageRef);
+      let photoUrl = croppedImage;
+      try {
+        const storageRef = ref(storage, `players/${playerId}/${Date.now()}_avatar.jpg`);
+        await withTimeout(uploadString(storageRef, croppedImage, 'data_url'), 3000);
+        photoUrl = await withTimeout(getDownloadURL(storageRef), 3000);
+      } catch (storageError) {
+        console.warn("Firebase Storage upload failed or timed out for player, falling back to base64 data URI directly:", storageError);
+      }
 
       // Update player document
       try {
@@ -1849,21 +2154,31 @@ function TeamsSection({
     teamId: string,
     file: File,
   ) => {
+    setUploadingPlayerId(playerId);
     try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setCropPlayerPhoto({
-          src: event.target?.result as string,
-          playerId,
-          teamId,
-        });
-      };
-      reader.onerror = () => {
-        alert("Failed to read image.");
-      };
-      reader.readAsDataURL(file);
+      const compressedSrc = await compressAndResizeFile(file, 1200, 0.82);
+      setCropPlayerPhoto({
+        src: compressedSrc,
+        playerId,
+        teamId,
+      });
     } catch (err) {
-      console.error("Photo reading failed", err);
+      console.error("Image pre-compression failed, falling back to standard reader:", err);
+      try {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setCropPlayerPhoto({
+            src: event.target?.result as string,
+            playerId,
+            teamId,
+          });
+        };
+        reader.readAsDataURL(file);
+      } catch (innerErr) {
+        alert("Failed to read image.");
+      }
+    } finally {
+      setUploadingPlayerId(null);
     }
   };
 
@@ -1897,6 +2212,22 @@ function TeamsSection({
           imageSrc={cropPlayerPhoto.src}
           onCropCompleteAction={handleApplyPlayerCrop}
           onCancel={() => setCropPlayerPhoto(null)}
+          aspectRatio={1}
+        />
+      )}
+      {cropTeamLogo && (
+        <ImageCropper
+          imageSrc={cropTeamLogo.src}
+          onCropCompleteAction={handleApplyTeamLogoCrop}
+          onCancel={() => setCropTeamLogo(null)}
+          aspectRatio={1}
+        />
+      )}
+      {cropEditTeamLogo && (
+        <ImageCropper
+          imageSrc={cropEditTeamLogo}
+          onCropCompleteAction={handleApplyEditLogoCrop}
+          onCancel={() => setCropEditTeamLogo(null)}
           aspectRatio={1}
         />
       )}
@@ -2031,10 +2362,12 @@ function TeamsSection({
               <div className="flex items-center gap-4 w-full sm:w-auto overflow-hidden">
                 {/* Team Branding Logo / Avatar */}
                 <div 
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border border-white/10"
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border border-white/10 relative group/teamlogo"
                   style={{ backgroundColor: team.primaryColor ? `${team.primaryColor}15` : '#98D22C15', borderColor: team.primaryColor || '#98D22C' }}
                 >
-                  {team.logoUrl ? (
+                  {uploadingTeamId === team.id ? (
+                    <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  ) : team.logoUrl ? (
                     <img 
                       src={team.logoUrl} 
                       alt={team.name} 
@@ -2048,6 +2381,37 @@ function TeamsSection({
                     >
                       {team.shortName || team.name.slice(0, 2)}
                     </span>
+                  )}
+
+                  {isOrganizer && (
+                    <label 
+                      className="absolute inset-0 bg-black/75 opacity-0 group-hover/teamlogo:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none text-brand"
+                      onClick={(e) => e.stopPropagation()}
+                      title="Upload Team Logo"
+                    >
+                      <Camera size={16} className="mb-0.5 text-brand" />
+                      <span className="text-[7px] font-black uppercase tracking-widest leading-none text-white">Upload</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const compressedSrc = await compressAndResizeFile(file, 800, 0.85);
+                              setCropTeamLogo({ src: compressedSrc, teamId: team.id });
+                            } catch (err) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                setCropTeamLogo({ src: event.target?.result as string, teamId: team.id });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
                   )}
                 </div>
 
@@ -2594,16 +2958,55 @@ function TeamsSection({
                   />
                 </div>
                 <div className="col-span-2 space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
-                    Team Logo URL
-                  </label>
-                  <input
-                    type="url"
-                    value={editTeamLogoUrl}
-                    onChange={(e) => setEditTeamLogoUrl(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand"
-                    placeholder="https://..."
-                  />
+                  <div className="flex items-center justify-between px-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim">
+                      Team Logo
+                    </label>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-brand flex items-center gap-1 cursor-pointer hover:underline">
+                      <Camera size={12} />
+                      {uploadingEditLogo ? "Uploading..." : "Upload File"}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        disabled={uploadingEditLogo}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const compressedSrc = await compressAndResizeFile(file, 800, 0.85);
+                              setCropEditTeamLogo(compressedSrc);
+                            } catch (err) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                setCropEditTeamLogo(event.target?.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={editTeamLogoUrl}
+                      onChange={(e) => setEditTeamLogoUrl(e.target.value)}
+                      className="w-full pl-4 pr-12 py-3 bg-white/5 border border-white/5 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand text-xs"
+                      placeholder="Or enter logo URL..."
+                    />
+                    {editTeamLogoUrl && (
+                      <div className="absolute right-2 top-1.5 w-9 h-9 rounded-lg overflow-hidden border border-white/10 shadow bg-white/5">
+                        <img 
+                          src={editTeamLogoUrl} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -3797,6 +4200,7 @@ function MatchDetailsModal({
 
               {activeTab === "stats" && (
                 <div className="space-y-12">
+                  <MatchAnalyticsChart balls={balls} match={match} />
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-12">
                     {[
                       { name: match.teamAName, stats: getMatchStats().teamA },
@@ -4680,6 +5084,7 @@ function MatchesSection({
   tournamentId,
   onUpdate,
   defaultOvers,
+  tournamentName,
 }: {
   matches: any[];
   teams: any[];
@@ -4687,6 +5092,7 @@ function MatchesSection({
   tournamentId: string;
   onUpdate: () => void;
   defaultOvers?: number;
+  tournamentName?: string;
 }) {
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [showPlayoffsModal, setShowPlayoffsModal] = useState(false);
@@ -4704,6 +5110,11 @@ function MatchesSection({
   const [matchTime, setMatchTime] = useState("");
   const [maxOvers, setMaxOvers] = useState(defaultOvers?.toString() || "20");
   const [matchError, setMatchError] = useState("");
+
+  const [autoVenue, setAutoVenue] = useState("");
+  const [autoStartDate, setAutoStartDate] = useState("");
+  const [autoTime, setAutoTime] = useState("");
+  const [autoInterval, setAutoInterval] = useState("1");
 
   useEffect(() => {
     if (defaultOvers) {
@@ -4780,6 +5191,10 @@ function MatchesSection({
       };
 
       await updateDoc(matchRef, updateData);
+      
+      // Dispatch match start notifications asynchronously without blocking navigation
+      sendMatchStartNotifications(setupMatch, tournamentName || "Cricket Tournament").catch(console.error);
+
       setSetupMatch(null);
       navigate(`/scoring/${setupMatch.id}`);
     } catch (err) {
@@ -4892,16 +5307,43 @@ function MatchesSection({
         return b.nrr - a.nrr;
       });
 
-      const createScheduledMatch = async (team1: any, team2: any) => {
+      const getShiftedDate = (baseDateStr: string, daysToAdd: number) => {
+        if (!baseDateStr) return "";
+        try {
+          const parts = baseDateStr.split("-");
+          if (parts.length !== 3) return baseDateStr;
+          const year = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const day = parseInt(parts[2], 10);
+          
+          const date = new Date(Date.UTC(year, month, day));
+          date.setUTCDate(date.getUTCDate() + daysToAdd);
+          
+          const yyyy = date.getUTCFullYear();
+          const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+          const dd = String(date.getUTCDate()).padStart(2, "0");
+          return `${yyyy}-${mm}-${dd}`;
+        } catch (err) {
+          return baseDateStr;
+        }
+      };
+
+      const createScheduledMatch = async (team1: any, team2: any, matchIdx: number) => {
+        let finalDate = autoStartDate || "";
+        if (autoStartDate && autoInterval !== "0") {
+          const daysToAdd = matchIdx * Number(autoInterval || "1");
+          finalDate = getShiftedDate(autoStartDate, daysToAdd);
+        }
+
         await addDoc(collection(db, "matches"), {
           tournamentId,
           teamAId: team1.id,
           teamAName: team1.name,
           teamBId: team2.id,
           teamBName: team2.name,
-          venue: venue || "",
-          matchDate: matchDate || "",
-          matchTime: matchTime || "",
+          venue: autoVenue || "",
+          matchDate: finalDate,
+          matchTime: autoTime || "",
           status: "scheduled",
           maxOvers: Number(maxOvers),
           currentInnings: 1,
@@ -4910,6 +5352,7 @@ function MatchesSection({
             teamA: { runs: 0, wickets: 0, overs: 0 },
             teamB: { runs: 0, wickets: 0, overs: 0 },
           },
+          createdAt: new Date().toISOString(),
         });
       };
 
@@ -4946,7 +5389,7 @@ function MatchesSection({
             );
 
             if (!exists) {
-              await createScheduledMatch(teamAUnit, teamBUnit);
+              await createScheduledMatch(teamAUnit, teamBUnit, scheduleCreated);
               scheduleCreated++;
             }
           }
@@ -4962,19 +5405,19 @@ function MatchesSection({
         }
 
         if (qualifiersCount === 2) {
-          await createScheduledMatch(topTeams[0], topTeams[1]);
+          await createScheduledMatch(topTeams[0], topTeams[1], 0);
         } else if (qualifiersCount === 3) {
-          await createScheduledMatch(topTeams[1], topTeams[2]);
+          await createScheduledMatch(topTeams[1], topTeams[2], 0);
         } else if (qualifiersCount === 4) {
-          await createScheduledMatch(topTeams[0], topTeams[3]);
-          await createScheduledMatch(topTeams[1], topTeams[2]);
+          await createScheduledMatch(topTeams[0], topTeams[3], 0);
+          await createScheduledMatch(topTeams[1], topTeams[2], 1);
         } else if (qualifiersCount === 5) {
-          await createScheduledMatch(topTeams[3], topTeams[4]);
+          await createScheduledMatch(topTeams[3], topTeams[4], 0);
         } else if (qualifiersCount === 8) {
-          await createScheduledMatch(topTeams[0], topTeams[7]);
-          await createScheduledMatch(topTeams[1], topTeams[6]);
-          await createScheduledMatch(topTeams[2], topTeams[5]);
-          await createScheduledMatch(topTeams[3], topTeams[4]);
+          await createScheduledMatch(topTeams[0], topTeams[7], 0);
+          await createScheduledMatch(topTeams[1], topTeams[6], 1);
+          await createScheduledMatch(topTeams[2], topTeams[5], 2);
+          await createScheduledMatch(topTeams[3], topTeams[4], 3);
         }
 
         setShowPlayoffsModal(false);
@@ -5472,6 +5915,67 @@ function MatchesSection({
                   </p>
                 </>
               )}
+
+              <div className="border-t border-white/5 pt-4 space-y-4">
+                <div className="text-[10px] font-black uppercase tracking-widest text-brand">
+                  Scheduling Options
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                    Default Venue
+                  </label>
+                  <input
+                    type="text"
+                    value={autoVenue}
+                    onChange={(e) => setAutoVenue(e.target.value)}
+                    placeholder="E.g., Ground A, Lord's Stadium"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={autoStartDate}
+                      onChange={(e) => setAutoStartDate(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand text-xs appearance-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                      Start Time
+                    </label>
+                    <input
+                      type="time"
+                      value={autoTime}
+                      onChange={(e) => setAutoTime(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand text-xs appearance-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
+                    Scheduling Spacing
+                  </label>
+                  <select
+                    value={autoInterval}
+                    onChange={(e) => setAutoInterval(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-brand appearance-none text-xs"
+                  >
+                    <option value="0" className="bg-bg-secondary text-white">Same Day (Simultaneous)</option>
+                    <option value="1" className="bg-bg-secondary text-white">Consecutive Days (1 day apart)</option>
+                    <option value="2" className="bg-bg-secondary text-white">Every 2 Days</option>
+                    <option value="3" className="bg-bg-secondary text-white">Every 3 Days</option>
+                    <option value="7" className="bg-bg-secondary text-white">Weekly (7 days apart)</option>
+                  </select>
+                </div>
+              </div>
 
               <div className="flex gap-4 pt-4">
                 <button

@@ -581,25 +581,80 @@ export default function Scoring() {
         region
       }).then(ballRef => {
         // Fire commentary in background
+        const getLocalFallback = () => {
+          const striker = match.strikerName || "Unknown";
+          const bowler = match.bowlerName || "Unknown";
+          if (isWicket) {
+            const wickets = [
+              `OUT! Brilliant delivery by ${bowler}! ${striker} is dismissed! What a crucial breakthrough!`,
+              `Gone! ${bowler} strikes again, sending ${striker} back to the pavilion! Magnificent bowling!`,
+              `WICKET! ${striker} mistimes the shot completely and the fielders make no mistake!`,
+              `OUT! Superb line and length from ${bowler} pays off. ${striker} has to walk back.`
+            ];
+            return wickets[Math.floor(Math.random() * wickets.length)];
+          }
+          if (extraType === "wide") {
+            return `Wide ball! ${bowler} sprays it down the leg side, giving away an extra run.`;
+          }
+          if (extraType === "nb") {
+            return `No ball! ${bowler} oversteps the line. Free hit opportunity coming up for ${striker}!`;
+          }
+          if (extraType === "b" || extraType === "bye") {
+            return `Bye taken! The delivery beats both ${striker} and the wicketkeeper for a quick run.`;
+          }
+          if (extraType === "lb" || extraType === "legbye") {
+            return `Leg bye! The ball deflects off the pads as they scramble through for a run.`;
+          }
+          if (runs === 0) {
+            return `Solid defense by ${striker} against a well-directed delivery from ${bowler}. No run.`;
+          }
+          if (runs === 4) {
+            return `FOUR! Gorgeous stroke by ${striker}! Pierces the infield beautifully to find the fence!`;
+          }
+          if (runs === 6) {
+            return `SIX! Up, up, and away! ${striker} times it to perfection and clears the boundary rope!`;
+          }
+          return `${runs} run${runs > 1 ? "s" : ""} worked nicely into the gaps${region ? ` at ${region}` : ""} by ${striker}.`;
+        };
+
+        const updateCommentary = async (text: string) => {
+          try {
+            const ballDocRef = doc(db, 'matches', match.id, 'balls', ballRef.id);
+            await runTransaction(db, async (transaction) => {
+              const ballDoc = await transaction.get(ballDocRef);
+              if (ballDoc.exists()) {
+                transaction.update(ballDocRef, { commentary: text });
+              }
+            });
+          } catch (ignoreErr) {
+            console.warn("Failed to update ball commentary:", ignoreErr);
+          }
+        };
+
         fetch("/api/commentary", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt: `Generate a single short sentence of exciting professional cricket commentary for a ball. Batsman: ${match.strikerName || 'Unknown'}, Bowler: ${match.bowlerName || 'Unknown'}. Event: ${isWicket ? "WICKET!" : (extraType ? extraType + " (" + runs + " runs)" : runs + " runs")}. Region: ${region || '-'}.`
           })
-        }).then(res => res.json()).then(async (data) => {
-          if (data.commentary) {
-            try {
-              const ballDocRef = doc(db, 'matches', match.id, 'balls', ballRef.id);
-              await runTransaction(db, async (transaction) => {
-                const ballDoc = await transaction.get(ballDocRef);
-                if (ballDoc.exists()) {
-                  transaction.update(ballDocRef, { commentary: data.commentary });
-                }
-              });
-            } catch (ignoreErr) {}
-          }
-        }).catch(err => console.error("Commentary error:", err));
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              throw new Error(`HTTP error ${res.status}`);
+            }
+            return res.json();
+          })
+          .then((data) => {
+            if (data && data.commentary) {
+              updateCommentary(data.commentary);
+            } else {
+              updateCommentary(getLocalFallback());
+            }
+          })
+          .catch((err) => {
+            console.warn("Commentary API failed (falling back to generated offline text):", err);
+            updateCommentary(getLocalFallback());
+          });
       });
 
     } catch (err) {
@@ -858,32 +913,53 @@ export default function Scoring() {
           </div>
 
           <div className="relative z-10 text-center space-y-2">
-            <div className="flex items-center justify-center gap-1 text-[16px]">
-              <motion.span 
-                key={`runs-${score.runs}`}
-                initial={{ scale: 1.1, color: "#98D22C" }}
-                animate={{ scale: 1, color: "#ffffff" }}
-                className="text-[40px] font-black italic tracking-tighter leading-[40px]"
-              >
-                {score.runs}
-              </motion.span>
-              <span className="text-[40px] font-black italic tracking-tighter leading-[40px]">/</span>
-              <motion.span 
-                key={`wickets-${score.wickets}`}
-                initial={{ scale: 1.2, color: "#ef4444" }}
-                animate={{ scale: 1, color: "#ffffff" }}
-                className="text-[40px] font-black italic tracking-tighter leading-[40px]"
-              >
-                {score.wickets}
-              </motion.span>
-              <motion.span 
-                key={`overs-${score.overs}`}
-                initial={{ opacity: 0.5 }}
-                animate={{ opacity: 1 }}
-                className="text-base font-bold text-white/50 mb-4 tracking-tighter ml-[10px]"
-              >
-                ({score.overs}/{displayMaxOvers})
-              </motion.span>
+            <div className="flex items-center justify-center gap-1 h-[48px] overflow-hidden select-none">
+              <div className="relative flex items-center justify-center min-w-[32px] h-full">
+                <AnimatePresence mode="popLayout">
+                  <motion.span 
+                    key={`runs-${score.runs}`}
+                    initial={{ y: 24, opacity: 0, scale: 0.8, color: "#98D22C" }}
+                    animate={{ y: 0, opacity: 1, scale: 1, color: "#ffffff" }}
+                    exit={{ y: -24, opacity: 0, scale: 0.8 }}
+                    transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                    className="text-[40px] font-black italic tracking-tighter leading-none inline-block origin-center"
+                  >
+                    {score.runs}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+
+              <span className="text-[40px] font-black italic tracking-tighter leading-none text-white/40">/</span>
+
+              <div className="relative flex items-center justify-center min-w-[24px] h-full">
+                <AnimatePresence mode="popLayout">
+                  <motion.span 
+                    key={`wickets-${score.wickets}`}
+                    initial={{ y: 24, opacity: 0, scale: 0.8, color: "#ef4444" }}
+                    animate={{ y: 0, opacity: 1, scale: 1, color: "#ffffff" }}
+                    exit={{ y: -24, opacity: 0, scale: 0.8 }}
+                    transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                    className="text-[40px] font-black italic tracking-tighter leading-none inline-block origin-center"
+                  >
+                    {score.wickets}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+
+              <div className="relative flex items-end h-full">
+                <AnimatePresence mode="popLayout">
+                  <motion.span 
+                    key={`overs-${score.overs}`}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    className="text-sm sm:text-base font-bold text-white/50 tracking-tighter ml-2 pb-1 inline-block"
+                    transition={{ type: "spring", stiffness: 350, damping: 22 }}
+                  >
+                    ({score.overs}/{displayMaxOvers})
+                  </motion.span>
+                </AnimatePresence>
+              </div>
             </div>
             <div className="text-[9px] font-bold uppercase tracking-widest text-white/40 leading-none">
               CRR: {crr} | Projected Score: {projected} (at {crr} RPO)

@@ -24,9 +24,16 @@ async function startServer() {
         return res.status(500).json({ error: "Gemini API key is required" });
       }
 
-      const ai = new GoogleGenAI({ apiKey: key });
+      const ai = new GoogleGenAI({
+        apiKey: key,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
       });
 
@@ -51,9 +58,16 @@ async function startServer() {
 
       const prompt = `You are an expert cricket commentator. Generate an exciting, professional post-match summary based on the following match data:\n\n${JSON.stringify(matchData, null, 2)}\n\nInclude highlights, key performances, and the final result. Keep it engaging.`;
 
-      const ai = new GoogleGenAI({ apiKey: key });
+      const ai = new GoogleGenAI({
+        apiKey: key,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
       });
 

@@ -9,7 +9,7 @@ import { motion } from 'motion/react';
 import { Camera, Save, User, Calendar, Mail, ArrowLeft } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import Loading from '../components/Loading';
-import ImageCropper from '../components/ImageCropper';
+import ImageCropper, { compressAndResizeFile } from '../components/ImageCropper';
 
 export default function Profile() {
   const { user, loading: authLoading } = useAuth();
@@ -81,15 +81,27 @@ export default function Profile() {
     }
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCropImageSrc(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    setUploading(true);
+    setUploadMessage({ type: 'success', text: 'Processing selected image...' });
+    try {
+      const compressedSrc = await compressAndResizeFile(file, 1200, 0.82);
+      setCropImageSrc(compressedSrc);
+      setUploadMessage(null);
+    } catch (err) {
+      console.error("Image pre-compression failed, falling back to standard reader:", err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCropImageSrc(reader.result as string);
+        setUploadMessage(null);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setUploading(false);
+    }
     e.target.value = ''; // clear input
   };
 
@@ -101,14 +113,42 @@ export default function Profile() {
     setUploadProgress(10);
     setUploadMessage(null);
 
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 3000): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error("Timeout: Operation took too long."));
+        }, timeoutMs);
+
+        promise
+          .then((res) => {
+            clearTimeout(timer);
+            resolve(res);
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    };
+
     try {
-      const storageRef = ref(storage, `users/${user.uid}/avatar`);
-      await uploadString(storageRef, croppedImage, 'data_url');
-      setUploadProgress(70);
-      const url = await getDownloadURL(storageRef);
-      setUploadProgress(90);
+      let url = croppedImage;
+      try {
+        const storageRef = ref(storage, `users/${user.uid}/avatar`);
+        await withTimeout(uploadString(storageRef, croppedImage, 'data_url'), 3000);
+        setUploadProgress(70);
+        url = await withTimeout(getDownloadURL(storageRef), 3000);
+        setUploadProgress(90);
+      } catch (storageError) {
+        console.warn("Firebase Storage upload failed or timed out, falling back to utilizing local Firestore/Auth base64 URI directly:", storageError);
+        setUploadProgress(80);
+      }
       
-      await updateProfile(user, { photoURL: url });
+      if (!url.startsWith('data:')) {
+        await updateProfile(user, { photoURL: url });
+      } else {
+        console.warn("Base64 data URL is too long for Firebase Auth profile photoURL; skipping updateProfile photoURL, but updating Firestore successfully.");
+      }
       await setDoc(doc(db, 'users', user.uid), { photoUrl: url }, { merge: true });
       setProfile(prev => ({ ...prev, photoUrl: url }));
       setUploadProgress(100);

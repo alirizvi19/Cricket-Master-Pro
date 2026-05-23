@@ -9,6 +9,81 @@ interface ImageCropperProps {
   aspectRatio?: number;
 }
 
+export async function compressAndResizeFile(
+  file: File,
+  maxDimension: number = 1000,
+  quality: number = 0.85
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error("No file provided"));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            if (width > maxDimension) {
+              height = Math.round(height * (maxDimension / width));
+              width = maxDimension;
+            }
+          } else {
+            if (height > maxDimension) {
+              width = Math.round(width * (maxDimension / height));
+              height = maxDimension;
+            }
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, width, height);
+
+        try {
+          const compressedDataUrl = canvas.toDataURL("image/webp", quality);
+          resolve(compressedDataUrl);
+        } catch (err) {
+          try {
+            const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+            resolve(compressedDataUrl);
+          } catch (innerErr) {
+            resolve(dataUrl);
+          }
+        }
+      };
+
+      img.onerror = (err) => {
+        reject(err);
+      };
+
+      img.src = dataUrl;
+    };
+
+    reader.onerror = (err) => {
+      reject(err);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const image = new Image();
