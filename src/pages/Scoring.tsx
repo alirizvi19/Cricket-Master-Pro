@@ -2,10 +2,11 @@
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/lib/hooks';
 import { doc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, where, getDocs, increment, runTransaction, setDoc } from 'firebase/firestore';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Settings, User, AlertTriangle, Check, X, ChevronDown, Users, Share2, Activity, Trophy, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Combobox } from '@headlessui/react';
 import Loading from '../components/Loading';
 
 export default function Scoring() {
@@ -40,6 +41,21 @@ export default function Scoring() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'wickets' | 'boundaries'>('all');
+  const [dropdownOpen, setDropdownOpen] = useState<'batting' | 'opponent' | null>(null);
+  const [dropdownSearch, setDropdownSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (match) {
@@ -102,6 +118,7 @@ export default function Scoring() {
     } else {
       updateData.battingTeamId = teamId;
       updateData.battingTeamName = teamName;
+      updateData.currentBattingTeamId = teamId;
     }
 
     try {
@@ -871,26 +888,143 @@ export default function Scoring() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  const filteredBattingTeams = dropdownSearch === ''
+    ? availableTeams
+    : availableTeams.filter((team) =>
+        team.name?.toLowerCase().includes(dropdownSearch.toLowerCase())
+      );
+
+  const filteredOpponentTeams = dropdownSearch === ''
+    ? availableTeams
+    : availableTeams.filter((team) =>
+        team.name?.toLowerCase().includes(dropdownSearch.toLowerCase())
+      );
+
   return (
     <div className="w-full h-[100dvh] flex flex-col bg-[#1A1A1A] text-white">
       {/* Header */}
       <header className="px-4 h-14 flex items-center justify-between z-10 border-b border-white/5">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-1"><ArrowLeft size={20} /></button>
-          <div className="flex flex-col">
-            <button 
-              onClick={() => setShowTeamSelector({ type: 'batting' })}
-              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-tight italic text-brand hover:text-white transition-colors"
-            >
-              {currentBatting} <ChevronDown size={10} />
-            </button>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setShowTeamSelector({ type: 'opponent' })}
-                className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-text-dim hover:text-white transition-colors"
+          <div className="flex flex-col relative" ref={dropdownRef}>
+            {/* Batting Team Combobox */}
+            <div className="relative inline-block text-left">
+              <Combobox
+                value={availableTeams.find(t => t.name === currentBatting) || null}
+                onChange={async (team: any) => {
+                  if (team) {
+                    await updateTeamAssignment(team.id, team.name, 'batting');
+                    setDropdownSearch('');
+                  }
+                }}
               >
-                vs {currentOpponent} <ChevronDown size={8} />
-              </button>
+                <div className="relative">
+                  <div className="flex items-center gap-1">
+                    <Combobox.Input
+                      className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-tight italic text-brand focus:ring-0 w-32 cursor-pointer placeholder:text-brand/40"
+                      onChange={(event) => setDropdownSearch(event.target.value)}
+                      displayValue={(team: any) => team?.name || currentBatting || ''}
+                      placeholder="Search batting team..."
+                    />
+                    <Combobox.Button className="p-0.5 text-brand flex items-center">
+                      <ChevronDown size={10} />
+                    </Combobox.Button>
+                  </div>
+
+                  <Combobox.Options className="absolute left-0 mt-1 w-64 rounded-2xl bg-[#242424] border border-white/10 shadow-2xl p-3 z-50 flex flex-col gap-1 max-h-48 overflow-y-auto custom-scrollbar">
+                    {filteredBattingTeams.length === 0 ? (
+                      <div className="py-2 text-center text-[10px] text-text-dim font-bold uppercase tracking-widest">
+                        No teams found
+                      </div>
+                    ) : (
+                      filteredBattingTeams.map((team) => (
+                        <Combobox.Option
+                          key={team.id}
+                          value={team}
+                          className={({ active, selected }) =>
+                            `w-full px-3 py-2 rounded-xl text-xs font-black uppercase italic tracking-tight text-left flex items-center justify-between transition-colors cursor-pointer ${
+                              selected
+                                ? 'bg-brand text-black font-black'
+                                : active
+                                ? 'bg-white/10 text-white'
+                                : 'bg-white/5 text-white'
+                            }`
+                          }
+                        >
+                          {({ selected }) => (
+                            <>
+                              <span className="block truncate">{team.name}</span>
+                              {selected && <Check size={12} />}
+                            </>
+                          )}
+                        </Combobox.Option>
+                      ))
+                    )}
+                  </Combobox.Options>
+                </div>
+              </Combobox>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Opponent Team Combobox */}
+              <div className="relative inline-block text-left">
+                <Combobox
+                  value={availableTeams.find(t => t.name === currentOpponent) || null}
+                  onChange={async (team: any) => {
+                    if (team) {
+                      await updateTeamAssignment(team.id, team.name, 'opponent');
+                      setDropdownSearch('');
+                    }
+                  }}
+                >
+                  <div className="relative">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-text-dim/60">vs</span>
+                      <Combobox.Input
+                        className="bg-transparent border-none outline-none text-[8px] font-bold uppercase tracking-widest text-text-dim focus:text-white focus:ring-0 w-28 cursor-pointer placeholder:text-text-dim/40"
+                        onChange={(event) => setDropdownSearch(event.target.value)}
+                        displayValue={(team: any) => team?.name || currentOpponent || ''}
+                        placeholder="Search opponent..."
+                      />
+                      <Combobox.Button className="p-0.5 text-text-dim flex items-center">
+                        <ChevronDown size={8} />
+                      </Combobox.Button>
+                    </div>
+
+                    <Combobox.Options className="absolute left-0 mt-1 w-64 rounded-2xl bg-[#242424] border border-white/10 shadow-2xl p-3 z-50 flex flex-col gap-1 max-h-48 overflow-y-auto custom-scrollbar">
+                      {filteredOpponentTeams.length === 0 ? (
+                        <div className="py-2 text-center text-[10px] text-text-dim font-bold uppercase tracking-widest">
+                          No teams found
+                        </div>
+                      ) : (
+                        filteredOpponentTeams.map((team) => (
+                          <Combobox.Option
+                            key={team.id}
+                            value={team}
+                            className={({ active, selected }) =>
+                              `w-full px-3 py-2 rounded-xl text-xs font-black uppercase italic tracking-tight text-left flex items-center justify-between transition-colors cursor-pointer ${
+                                selected
+                                  ? 'bg-brand text-black font-black'
+                                  : active
+                                  ? 'bg-white/10 text-white'
+                                  : 'bg-white/5 text-white'
+                              }`
+                            }
+                          >
+                            {({ selected }) => (
+                              <>
+                                <span className="block truncate">{team.name}</span>
+                                {selected && <Check size={12} />}
+                              </>
+                            )}
+                          </Combobox.Option>
+                        ))
+                      )}
+                    </Combobox.Options>
+                  </div>
+                </Combobox>
+              </div>
+
               {match.venue && (
                 <span className="text-[7px] text-text-dim/40 uppercase tracking-widest px-1.5 py-0.5 border border-white/5 rounded-md bg-white/[0.02]">
                   {match.venue}

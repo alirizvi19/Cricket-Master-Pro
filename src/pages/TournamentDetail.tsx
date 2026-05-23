@@ -17,7 +17,7 @@ import {
   orderBy,
   onSnapshot,
 } from "firebase/firestore";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import {
   Users,
@@ -136,6 +136,57 @@ export default function TournamentDetail() {
   const [tournament, setTournament] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "users"),
+      (snapshot) => {
+        const uMap: Record<string, any> = {};
+        snapshot.docs.forEach((docSnap) => {
+          uMap[docSnap.id] = { uid: docSnap.id, ...docSnap.data() };
+        });
+        setUsersMap(uMap);
+      },
+      (err) => {
+        console.error("Error listening to users map:", err);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  const mappedTeams = useMemo(() => {
+    return teams.map((team) => {
+      const mappedFullPlayers = (team.fullPlayers || []).map((p: any) => {
+        const u = p.userId ? usersMap[p.userId] : null;
+        if (u) {
+          return {
+            ...p,
+            name: u.displayName || p.name,
+            photoUrl: u.photoUrl || p.photoUrl,
+          };
+        }
+        return p;
+      });
+
+      const mappedPlayers = (team.players || []).map((p: any) => {
+        const u = p.userId ? usersMap[p.userId] : null;
+        if (u) {
+          return {
+            ...p,
+            name: u.displayName || p.name,
+          };
+        }
+        return p;
+      });
+
+      return {
+        ...team,
+        fullPlayers: mappedFullPlayers,
+        players: mappedPlayers,
+      };
+    });
+  }, [teams, usersMap]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
     "info" | "standings" | "teams" | "matches"
@@ -803,17 +854,17 @@ export default function TournamentDetail() {
 
       <div className="py-8">
         {activeTab === "standings" && (
-          <StandingsSection teams={teams} matches={matches} />
+          <StandingsSection teams={mappedTeams} matches={matches} />
         )}
         {activeTab === "info" && (
           <InfoSection
             tournament={tournament}
-            stats={{ teams: teams.length, matches: matches.length }}
+            stats={{ teams: mappedTeams.length, matches: matches.length }}
           />
         )}
         {activeTab === "teams" && (
           <TeamsSection
-            teams={teams}
+            teams={mappedTeams}
             isOrganizer={isOrganizer}
             onAddPlayer={fetchTournamentData}
             onAddTeam={() => setShowTeamModal(true)}
@@ -824,7 +875,7 @@ export default function TournamentDetail() {
         {activeTab === "matches" && (
           <MatchesSection
             matches={matches}
-            teams={teams}
+            teams={mappedTeams}
             isOrganizer={isScorer}
             tournamentId={id!}
             onUpdate={fetchTournamentData}
@@ -833,7 +884,7 @@ export default function TournamentDetail() {
           />
         )}
         {activeTab === ("analytics" as any) && (
-          <TournamentAnalyticsSection teams={teams} />
+          <TournamentAnalyticsSection teams={mappedTeams} />
         )}
       </div>
 
@@ -2819,7 +2870,7 @@ function TeamsSection({
                                 ) : fullPlayer.photoUrl ? (
                                   <img
                                     src={fullPlayer.photoUrl}
-                                    alt={p.name}
+                                    alt={fullPlayer.name}
                                     className="w-full h-full object-cover"
                                     referrerPolicy="no-referrer"
                                   />
@@ -2849,7 +2900,7 @@ function TeamsSection({
                             </div>
                             <div className="flex flex-col">
                               <span className="truncate font-black italic text-sm group-hover/name:text-brand transition-colors">
-                                {p.name}
+                                {fullPlayer.name}
                               </span>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
