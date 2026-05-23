@@ -131,7 +131,7 @@ const copyTextToClipboard = async (text: string): Promise<boolean> => {
 
 export default function TournamentDetail() {
   const { id } = useParams();
-  const { user, dbUser, isAdmin, userRole } = useAuth();
+  const { user, dbUser, isAdmin, userRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
@@ -275,10 +275,12 @@ export default function TournamentDetail() {
   }, [id, user]);
 
   useEffect(() => {
+    if (authLoading) return;
     checkJoinLink();
-  }, [id, user, searchParams]);
+  }, [id, user, authLoading, searchParams]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (tournament && searchParams.get("joinScorer") === "true") {
       if (!user) {
         // Redirect to login but keep the current URL as redirect target
@@ -302,9 +304,10 @@ export default function TournamentDetail() {
         setShowScorerJoinConfirmation(true);
       }
     }
-  }, [tournament, user, searchParams, navigate]);
+  }, [tournament, user, authLoading, searchParams, navigate]);
 
   const checkJoinLink = async () => {
+    if (authLoading) return;
     const joinTeamId = searchParams.get("joinTeam");
     if (joinTeamId) {
       if (!user) {
@@ -464,7 +467,7 @@ export default function TournamentDetail() {
     }
   };
 
-  if (loading) return <Loading />;
+  if (loading || authLoading) return <Loading />;
   if (!tournament) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
@@ -814,6 +817,8 @@ export default function TournamentDetail() {
             isOrganizer={isOrganizer}
             onAddPlayer={fetchTournamentData}
             onAddTeam={() => setShowTeamModal(true)}
+            tournamentId={id!}
+            tournamentName={tournament?.name || ""}
           />
         )}
         {activeTab === "matches" && (
@@ -1780,12 +1785,17 @@ function TeamsSection({
   isOrganizer,
   onAddPlayer,
   onAddTeam,
+  tournamentId,
+  tournamentName,
 }: {
   teams: any[];
   isOrganizer: boolean;
   onAddPlayer: () => void;
   onAddTeam?: () => void;
+  tournamentId: string;
+  tournamentName: string;
 }) {
+  const { user, dbUser } = useAuth();
   const [copiedTeamId, setCopiedTeamId] = useState<string | null>(null);
   const [showPlayerModal, setShowPlayerModal] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<
@@ -1796,9 +1806,106 @@ function TeamsSection({
   );
   const [showInviteModal, setShowInviteModal] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
+
+  const [showShareNotificationModal, setShowShareNotificationModal] = useState<{ teamId: string; teamName: string } | null>(null);
+  const [appUsers, setAppUsers] = useState<any[]>([]);
+  const [selectedNotifyUser, setSelectedNotifyUser] = useState<string>("");
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [searchVal, setSearchVal] = useState("");
+
+  const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
+  const [userSearchText, setUserSearchText] = useState("");
+  const [selectedRegUserId, setSelectedRegUserId] = useState("");
+
+  useEffect(() => {
+    const fetchRegisteredUsers = async () => {
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        const list = snap.docs.map((docSnap) => ({
+          uid: docSnap.id,
+          ...docSnap.data(),
+        }));
+        setRegisteredUsers(list);
+      } catch (err) {
+        console.error("Error fetching registered users list:", err);
+      }
+    };
+    if (showPlayerModal) {
+      fetchRegisteredUsers();
+      setSelectedRegUserId("");
+      setUserSearchText("");
+    }
+  }, [showPlayerModal]);
+
+  useEffect(() => {
+    const fetchUsersList = async () => {
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        const list = snap.docs.map((docSnap) => ({
+          uid: docSnap.id,
+          ...docSnap.data(),
+        }));
+        setAppUsers(list.filter((u: any) => u.uid !== user?.uid)); // Exclude currently logged-in user
+      } catch (err) {
+        console.error("Error fetching users list for notification:", err);
+      }
+    };
+    if (showShareNotificationModal) {
+      fetchUsersList();
+    }
+  }, [showShareNotificationModal, user]);
+
+  const [copiedLinkShareModal, setCopiedLinkShareModal] = useState(false);
+  
+  const handleCopyLinkLocal = async () => {
+    if (!showShareNotificationModal) return;
+    const shareUrl = getShareableUrl(
+      `${window.location.pathname}?joinTeam=${showShareNotificationModal.teamId}`
+    );
+    const success = await copyTextToClipboard(shareUrl);
+    if (success) {
+      setCopiedLinkShareModal(true);
+      setTimeout(() => setCopiedLinkShareModal(false), 2000);
+    }
+  };
+
+  const handleSendShareNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showShareNotificationModal || !selectedNotifyUser) return;
+    setSendingNotification(true);
+    try {
+      const selectedUserObj = appUsers.find((u) => u.uid === selectedNotifyUser);
+      const recipientName = selectedUserObj?.displayName || selectedUserObj?.email || "User";
+      
+      const shareUrl = getShareableUrl(
+        `${window.location.pathname}?joinTeam=${showShareNotificationModal.teamId}`
+      );
+      
+      await addDoc(collection(db, "notifications"), {
+        userId: selectedNotifyUser,
+        title: "Team Invitation 🏏",
+        message: `${user?.displayName || "An organizer"} invited you to join the team "${showShareNotificationModal.teamName}" in the tournament "${tournamentName}"!`,
+        tournamentId: tournamentId || "",
+        teamId: showShareNotificationModal.teamId,
+        type: "team_invite",
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+      
+      alert(`Success! Invitation notification sent to ${recipientName}.`);
+      setShowShareNotificationModal(null);
+      setSelectedNotifyUser("");
+      setSearchVal("");
+    } catch (err) {
+      console.error("Error sending share notification:", err);
+      alert("Failed to send notification. Please try again.");
+    } finally {
+      setSendingNotification(false);
+    }
+  };
+
   const [userRequests, setUserRequests] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
-  const { user, dbUser } = useAuth();
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerRole, setNewPlayerRole] = useState<
     "batsman" | "bowler" | "all-rounder"
@@ -2058,6 +2165,7 @@ function TeamsSection({
         teamId: showPlayerModal,
         role: newPlayerRole,
         photoUrl: null,
+        userId: selectedRegUserId || null,
         matchesPlayed: 0,
         totalRuns: 0,
         totalBallsFaced: 0,
@@ -2076,12 +2184,18 @@ function TeamsSection({
         bowlingAverage: 0,
       });
 
+      const playerObj: any = { id: playerRef.id, name: newPlayerName };
+      if (selectedRegUserId) {
+        playerObj.userId = selectedRegUserId;
+      }
+
       await updateDoc(doc(db, "teams", showPlayerModal), {
-        players: arrayUnion({ id: playerRef.id, name: newPlayerName }),
+        players: arrayUnion(playerObj),
       });
       onAddPlayer();
       setShowPlayerModal(null);
       setNewPlayerName("");
+      setSelectedRegUserId("");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, playerPath);
     } finally {
@@ -2605,28 +2719,19 @@ function TeamsSection({
                     <Mail size={16} />
                   </button>
                   <button
-                    onClick={async () => {
-                      const url = getShareableUrl(
-                        `${window.location.pathname}?joinTeam=${team.id}`,
-                      );
-                      const success = await copyTextToClipboard(url);
-                      if (success) {
-                        setCopiedTeamId(team.id);
-                        setTimeout(() => setCopiedTeamId(null), 2000);
-                      }
+                    onClick={() => {
+                      setShowShareNotificationModal({ teamId: team.id, teamName: team.name });
+                      setSelectedNotifyUser("");
+                      setSearchVal("");
                     }}
                     className={`p-2.5 transition-all rounded-xl border flex items-center justify-center ${
-                      copiedTeamId === team.id
-                        ? "bg-green-500 text-white border-green-500"
-                        : "hover:bg-green-500/10 text-green-400/60 hover:text-green-400 border-transparent bg-white/5"
+                      showShareNotificationModal?.teamId === team.id
+                        ? "bg-brand text-black border-brand animate-pulse"
+                        : "hover:bg-brand/10 text-brand/60 hover:text-brand border-transparent bg-white/5"
                     }`}
-                    title="Copy Join Link"
+                    title="Share Team & Notify User"
                   >
-                    {copiedTeamId === team.id ? (
-                      <Check size={16} />
-                    ) : (
-                      <Link2 size={16} />
-                    )}
+                    <Share2 size={16} />
                   </button>
                   <button
                     onClick={() => setConfirmDeleteTeam(team.id)}
@@ -3006,6 +3111,53 @@ function TeamsSection({
               Add Player to Team
             </h2>
             <form onSubmit={handleAddPlayer} className="space-y-4">
+              <div className="space-y-2 border-b border-white/5 pb-4">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim px-2 block">
+                  Autofill from Registered User (Optional)
+                </label>
+                
+                {/* Search box for registered users */}
+                <input
+                  type="text"
+                  placeholder="Search registered users by name/email..."
+                  value={userSearchText}
+                  onChange={(e) => setUserSearchText(e.target.value)}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder:text-text-dim/40 outline-none focus:ring-2 focus:ring-brand"
+                />
+
+                <select
+                  value={selectedRegUserId}
+                  onChange={(e) => {
+                    const uid = e.target.value;
+                    setSelectedRegUserId(uid);
+                    if (uid) {
+                      const matchedUser = registeredUsers.find((u) => u.uid === uid);
+                      if (matchedUser) {
+                        setNewPlayerName(matchedUser.displayName || matchedUser.email?.split("@")[0] || "");
+                      }
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+                >
+                  <option value="" className="bg-bg-secondary text-text-dim">
+                    -- Select Registered User --
+                  </option>
+                  {registeredUsers
+                    .filter((u) => {
+                      const term = userSearchText.toLowerCase();
+                      return (
+                        (u.displayName || "").toLowerCase().includes(term) ||
+                        (u.email || "").toLowerCase().includes(term)
+                      );
+                    })
+                    .map((u) => (
+                      <option key={u.uid} value={u.uid} className="bg-bg-secondary text-white">
+                        {u.displayName || u.email?.split("@")[0] || "User"} ({u.email})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-dim px-2">
                   Player Name
@@ -3809,6 +3961,137 @@ function TeamsSection({
                     className="flex-1 py-3 bg-brand text-black rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-white"
                   >
                     Invite
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Invite & Notify User Modal */}
+      <AnimatePresence>
+        {showShareNotificationModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+              onClick={() => setShowShareNotificationModal(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-sm shadow-2xl space-y-6"
+            >
+              <button
+                onClick={() => setShowShareNotificationModal(null)}
+                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-xl text-text-dim hover:text-white transition-all"
+              >
+                <X size={18} />
+              </button>
+
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter text-brand italic">
+                  Share & Invite
+                </h2>
+                <p className="text-xs text-text-dim mt-1">
+                  Invite players to join <span className="text-white font-bold">{showShareNotificationModal.teamName}</span>.
+                </p>
+              </div>
+
+              {/* Option A: Copy invite link directly */}
+              <div className="space-y-2 border-b border-white/5 pb-6">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim px-1 block">
+                  Copy Shareable Join Link
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    value={getShareableUrl(`${window.location.pathname}?joinTeam=${showShareNotificationModal.teamId}`)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-xs text-white/60 outline-none select-all truncate font-mono"
+                  />
+                  <button
+                    onClick={handleCopyLinkLocal}
+                    className={`px-4 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all shrink-0 flex items-center gap-1.5 border ${
+                      copiedLinkShareModal
+                        ? "bg-green-500 text-white border-green-500"
+                        : "bg-white/5 text-white border-white/10 hover:bg-white/10"
+                    }`}
+                  >
+                    {copiedLinkShareModal ? (
+                      <>
+                        <Check size={12} /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Link2 size={12} /> Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Option B: Choose user from list to send in-app notification */}
+              <form onSubmit={handleSendShareNotification} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-dim px-1 block">
+                    Choose User to Notify In-App
+                  </label>
+                  
+                  {/* Search Bar */}
+                  <input
+                    type="text"
+                    placeholder="Search users by name or email..."
+                    value={searchVal}
+                    onChange={(e) => setSearchVal(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder:text-text-dim/40 outline-none focus:ring-2 focus:ring-brand"
+                  />
+
+                  {/* HTML Select box with custom styles */}
+                  <select
+                    value={selectedNotifyUser}
+                    onChange={(e) => setSelectedNotifyUser(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-xs text-white outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+                  >
+                    <option value="" className="bg-bg-secondary text-text-dim">
+                      -- Select User --
+                    </option>
+                    {appUsers
+                      .filter((u) => {
+                        const term = searchVal.toLowerCase();
+                        return (
+                          (u.displayName || "").toLowerCase().includes(term) ||
+                          (u.email || "").toLowerCase().includes(term)
+                        );
+                      })
+                      .map((u) => (
+                        <option key={u.uid} value={u.uid} className="bg-bg-secondary text-white">
+                          {u.displayName || u.email?.split("@")[0] || "User"} ({u.email})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-4 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowShareNotificationModal(null)}
+                    className="flex-grow py-3 border border-white/10 rounded-xl font-bold uppercase text-[10px] tracking-widest text-white hover:bg-white/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sendingNotification || !selectedNotifyUser}
+                    className="flex-grow py-3 bg-brand disabled:bg-brand/40 text-black disabled:text-black/50 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-white transition-all disabled:pointer-events-none"
+                  >
+                    {sendingNotification ? "Sending..." : "Notify User"}
                   </button>
                 </div>
               </form>

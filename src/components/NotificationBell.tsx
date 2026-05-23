@@ -53,7 +53,11 @@ export default function NotificationBell() {
         navigate(`/tournament/${notification.tournamentId}?liveMatchId=${notification.matchId}`);
       }
     } else if (notification.tournamentId) {
-      navigate(`/tournament/${notification.tournamentId}`);
+      if (notification.type === 'team_invite' && notification.teamId) {
+        navigate(`/tournament/${notification.tournamentId}?joinTeam=${notification.teamId}`);
+      } else {
+        navigate(`/tournament/${notification.tournamentId}`);
+      }
     }
   };
 

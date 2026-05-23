@@ -23,7 +23,8 @@ export interface Notification {
   message: string;
   matchId?: string;
   tournamentId?: string;
-  type: 'match_start' | 'match_scheduled' | 'general';
+  teamId?: string;
+  type: 'match_start' | 'match_scheduled' | 'general' | 'team_invite';
   read: boolean;
   createdAt: string;
 }
