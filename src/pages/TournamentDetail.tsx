@@ -272,8 +272,11 @@ export default function TournamentDetail() {
 
   useEffect(() => {
     fetchTournamentData();
-    checkJoinLink();
   }, [id, user]);
+
+  useEffect(() => {
+    checkJoinLink();
+  }, [id, user, searchParams]);
 
   useEffect(() => {
     if (tournament && searchParams.get("joinScorer") === "true") {
@@ -350,7 +353,7 @@ export default function TournamentDetail() {
         createdAt: new Date().toISOString(),
       });
       setJoinConfirmation(null);
-      // We could use a toast here
+      alert(`Successfully submitted request to join team "${joinConfirmation.teamName}"! The tournament organizer will review your request.`);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, "joinRequests");
     }
@@ -502,6 +505,7 @@ export default function TournamentDetail() {
       const newParams = new URLSearchParams(searchParams);
       newParams.delete("joinScorer");
       setSearchParams(newParams);
+      alert("Successfully joined as a match scorer for this tournament!");
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `tournaments/${id}`);
     }
@@ -827,6 +831,104 @@ export default function TournamentDetail() {
           <TournamentAnalyticsSection teams={teams} />
         )}
       </div>
+
+      {/* Join Request Confirmation Modal */}
+      {joinConfirmation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setJoinConfirmation(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+          >
+            <button 
+              onClick={() => setJoinConfirmation(null)}
+              className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-xl text-text-dim hover:text-white transition-all"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-4 tracking-tighter text-brand italic">
+              Join Team Request
+            </h2>
+            <div className="space-y-4">
+              <p className="text-sm text-text-dim leading-relaxed">
+                You have been shared a link to join <span className="text-brand font-bold">{joinConfirmation.teamName}</span> in <span className="text-white font-bold">{tournament?.name || "this tournament"}</span>.
+              </p>
+              <p className="text-xs text-text-dim/80">
+                Confirming this request will notify the tournament organizer of your interest to join this team.
+              </p>
+            </div>
+            <div className="flex gap-4 mt-6">
+              <button
+                type="button"
+                onClick={() => setJoinConfirmation(null)}
+                className="flex-1 px-4 py-3 bg-white/5 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmJoinLink}
+                className="flex-1 px-4 py-3 bg-brand text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-lg shadow-brand/20"
+              >
+                Request to Join
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Scorer Join Confirmation Modal */}
+      {showScorerJoinConfirmation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowScorerJoinConfirmation(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-bg-secondary border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+          >
+            <button 
+              onClick={() => setShowScorerJoinConfirmation(false)}
+              className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-xl text-text-dim hover:text-white transition-all"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl sm:text-2xl font-black uppercase mb-4 tracking-tighter text-brand italic">
+              Join as Match Scorer
+            </h2>
+            <div className="space-y-4">
+              <p className="text-sm text-text-dim leading-relaxed">
+                You have been invited to join <span className="text-brand font-bold">{tournament?.name}</span> as a Match Scorer.
+              </p>
+              <p className="text-xs text-text-dim/80">
+                By joining, you will have permission to manage scores, update match statuses, and record stats for this tournament.
+              </p>
+            </div>
+            <div className="flex gap-4 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowScorerJoinConfirmation(false)}
+                className="flex-1 px-4 py-3 bg-white/5 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmScorerJoin}
+                className="flex-1 px-4 py-3 bg-brand text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-lg shadow-brand/20"
+              >
+                Accept Invite
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Add Team Modal */}
       {showTeamModal && (
