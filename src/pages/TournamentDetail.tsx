@@ -95,6 +95,40 @@ const getShareableUrl = (path: string) => {
   return `${protocol}//${shareableHost}${path}`;
 };
 
+const copyTextToClipboard = async (text: string): Promise<boolean> => {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.warn("navigator.clipboard.writeText failed, trying fallback:", err);
+    }
+  }
+
+  // Fallback using temporary textarea
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Position it offscreen
+    textArea.style.position = "fixed";
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.opacity = "0";
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (fallbackErr) {
+    console.error("Clipboard copy completely failed:", fallbackErr);
+    return false;
+  }
+};
+
 export default function TournamentDetail() {
   const { id } = useParams();
   const { user, dbUser, isAdmin, userRole } = useAuth();
@@ -473,14 +507,16 @@ export default function TournamentDetail() {
     }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     try {
       const link = getShareableUrl(
         `${window.location.pathname}?joinScorer=true`,
       );
-      navigator.clipboard.writeText(link);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
+      const success = await copyTextToClipboard(link);
+      if (success) {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      }
     } catch (err) {
       console.error("Failed to copy link:", err);
     }
@@ -2467,13 +2503,15 @@ function TeamsSection({
                     <Mail size={16} />
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const url = getShareableUrl(
                         `${window.location.pathname}?joinTeam=${team.id}`,
                       );
-                      navigator.clipboard.writeText(url);
-                      setCopiedTeamId(team.id);
-                      setTimeout(() => setCopiedTeamId(null), 2000);
+                      const success = await copyTextToClipboard(url);
+                      if (success) {
+                        setCopiedTeamId(team.id);
+                        setTimeout(() => setCopiedTeamId(null), 2000);
+                      }
                     }}
                     className={`p-2.5 transition-all rounded-xl border flex items-center justify-center ${
                       copiedTeamId === team.id

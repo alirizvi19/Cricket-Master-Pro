@@ -814,13 +814,49 @@ export default function Scoring() {
     return `${protocol}//${shareableHost}${path}`;
   };
 
+  const copyTextToClipboard = async (text: string): Promise<boolean> => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        console.warn("navigator.clipboard.writeText failed, trying fallback:", err);
+      }
+    }
+
+    // Fallback using temporary textarea
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      
+      // Position it offscreen
+      textArea.style.position = "fixed";
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.opacity = "0";
+      
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      return successful;
+    } catch (fallbackErr) {
+      console.error("Clipboard copy completely failed:", fallbackErr);
+      return false;
+    }
+  };
+
   const shareLink = `/tournament/${match?.tournamentId}?liveMatchId=${id}`;
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     const link = getShareableUrl(shareLink);
-    navigator.clipboard.writeText(link);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+    const success = await copyTextToClipboard(link);
+    if (success) {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
   };
 
   const handleWhatsAppShare = () => {
