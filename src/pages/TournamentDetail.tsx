@@ -3423,7 +3423,7 @@ function TeamsSection({
 
       {/* Player Stats Modal */}
       {showStatsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -4365,7 +4365,7 @@ function MatchDetailsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-start justify-center p-4 bg-black/90 backdrop-blur-xl overflow-y-auto"
       onClick={onClose}
     >
       <button
@@ -4387,7 +4387,7 @@ function MatchDetailsModal({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-1.5 h-10 bg-brand rounded-full" />
-              <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-white italic leading-none">
+              <h2 className="text-[20px] leading-[24px] sm:text-4xl sm:leading-none font-black uppercase tracking-tighter text-white italic">
                 {match.status === "live"
                   ? "Live Match Center"
                   : "Match Analytics"}
@@ -5341,7 +5341,7 @@ function MatchSetupModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-3xl overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-start justify-center p-4 bg-black/95 backdrop-blur-3xl overflow-y-auto"
       onClick={onClose}
     >
       <button
@@ -5619,6 +5619,7 @@ function MatchesSection({
     }
   }, [matches, searchParams, selectedMatchStats]);
 
+  const [activeInningsToggle, setActiveInningsToggle] = useState<Record<string, number>>({});
   const statusCounts = {
     all: matches.length,
     scheduled: matches.filter((m) => m.status === "scheduled").length,
@@ -5969,50 +5970,100 @@ function MatchesSection({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white/5 p-4 px-6 rounded-2xl border border-white/5 shadow-inner">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
+      <div className="flex flex-col gap-4 bg-white/5 p-4 px-4 sm:px-6 rounded-2xl border border-white/5 shadow-inner">
+        {/* Top / Filter Row */}
+        <div className="flex flex-wrap items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3">
             <Trophy size={14} className="text-brand" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-dim italic">
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-text-dim italic">
               Match Center
             </span>
           </div>
 
-          <div className="relative group w-full sm:min-w-[200px]">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:ring-1 focus:ring-brand hover:bg-white/10 transition-all cursor-pointer shadow-xl"
-            >
-              <option value="all" className="bg-bg-secondary text-white">
-                All Fixtures ({statusCounts.all})
-              </option>
-              <option value="scheduled" className="bg-bg-secondary text-white">
-                Scheduled ({statusCounts.scheduled})
-              </option>
-              <option value="live" className="bg-bg-secondary text-white">
-                Live Matches ({statusCounts.live})
-              </option>
-              <option value="completed" className="bg-bg-secondary text-white">
-                Match Results ({statusCounts.completed})
-              </option>
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-dim group-hover:text-brand transition-colors">
-              <ChevronDown size={14} />
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 justify-end">
+            <div className="relative group w-full sm:max-w-[200px]">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 sm:py-2.5 pr-10 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white outline-none focus:ring-1 focus:ring-brand hover:bg-white/10 transition-all cursor-pointer shadow-xl text-right sm:text-left"
+              >
+                <option value="all" className="bg-bg-secondary text-white">
+                  All Fixtures ({statusCounts.all})
+                </option>
+                <option value="scheduled" className="bg-bg-secondary text-white">
+                  Scheduled ({statusCounts.scheduled})
+                </option>
+                <option value="live" className="bg-bg-secondary text-white">
+                  Live ({statusCounts.live})
+                </option>
+                <option value="completed" className="bg-bg-secondary text-white">
+                  Completed ({statusCounts.completed})
+                </option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-dim group-hover:text-brand transition-colors">
+                <ChevronDown size={14} />
+              </div>
             </div>
+
+            {isOrganizer && (
+              <div className="hidden sm:flex items-center gap-2">
+                <button
+                  onClick={() => setShowPlayoffsModal(true)}
+                  className="px-4 py-2 bg-purple-500 text-white rounded-lg font-black uppercase tracking-widest text-[9px] hover:bg-purple-400 transition-all shadow-lg shadow-purple-500/20"
+                >
+                  ⚡ Auto
+                </button>
+                <button
+                  onClick={() => setShowMatchModal(true)}
+                  className="px-4 py-2 bg-brand text-black rounded-lg font-black uppercase tracking-widest text-[9px] hover:bg-white transition-all shadow-lg shadow-brand/20"
+                >
+                  + Add
+                </button>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Live Matches 3-Column Indicator */}
+        {matches.filter((m) => m.status === "live").length > 0 && (
+          <div className="w-full grid grid-cols-1 gap-2 border-t border-white/5 pt-4">
+            {matches.filter((m) => m.status === "live").map((m) => {
+              const currentInnings = m.currentInnings || 1;
+              const isFirstInnings = currentInnings === 1;
+              const isBattingA = (m.battingFirst || 'teamA') === 'teamA';
+              const battingTeamName = isFirstInnings 
+                  ? (isBattingA ? m.teamAName : m.teamBName)
+                  : (isBattingA ? m.teamBName : m.teamAName);
+              
+              return (
+                <div key={m.id} className={`grid grid-cols-3 items-center gap-2 px-4 py-3 rounded-xl border shadow-inner text-[10px] sm:text-xs font-black uppercase tracking-widest italic ${isFirstInnings ? 'bg-orange-500/10 border-orange-500/20 text-orange-500' : 'bg-blue-500/10 border-blue-500/20 text-blue-500'}`}>
+                  <div className="truncate text-left pr-2" title={battingTeamName}>
+                    {battingTeamName}
+                  </div>
+                  <div className="text-center opacity-80 whitespace-nowrap">
+                    Innings {currentInnings}
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <div className={`w-2 h-2 animate-pulse rounded-full ${isFirstInnings ? 'bg-orange-500' : 'bg-blue-500'}`} />
+                    <span>Live</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {isOrganizer && (
-          <div className="flex items-center gap-2">
+          <div className="flex sm:hidden items-center justify-between gap-2 border-t border-white/5 pt-4">
             <button
               onClick={() => setShowPlayoffsModal(true)}
-              className="px-6 py-2 bg-purple-500 text-white rounded-lg font-black uppercase tracking-widest text-[9px] hover:bg-purple-400 transition-all shadow-lg shadow-purple-500/20"
+              className="flex-1 px-4 py-2.5 bg-purple-500 text-white rounded-lg font-black uppercase tracking-widest text-[10px] hover:bg-purple-400 transition-all shadow-lg shadow-purple-500/20 text-center"
             >
               ⚡ Auto-Schedule
             </button>
             <button
               onClick={() => setShowMatchModal(true)}
-              className="px-6 py-2 bg-brand text-black rounded-lg font-black uppercase tracking-widest text-[9px] hover:bg-white transition-all shadow-lg shadow-brand/20"
+              className="flex-1 px-4 py-2.5 bg-brand text-black rounded-lg font-black uppercase tracking-widest text-[10px] hover:bg-white transition-all shadow-lg shadow-brand/20 text-center"
             >
               + Schedule Match
             </button>
@@ -6020,11 +6071,11 @@ function MatchesSection({
         )}
       </div>
 
-      <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
+      <div className="flex flex-col gap-5 sm:gap-6 lg:gap-8">
         {filteredMatches.map((match) => (
           <div
             key={match.id}
-            className={`bg-bg-secondary border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 shadow-xl group hover:border-brand/50 transition-all relative flex flex-col justify-between overflow-hidden cursor-pointer hover:bg-white/[0.02]`}
+            className={`bg-bg-secondary border border-white/5 rounded-[20px] sm:rounded-3xl mb-[20px] pt-[16px] pb-[16px] pl-[14px] pr-[14px] sm:p-5 lg:p-6 space-y-4 sm:space-y-6 shadow-xl group hover:border-brand/50 transition-all relative flex flex-col justify-between overflow-hidden cursor-pointer hover:bg-white/[0.02] text-[16px] leading-[20px] sm:text-base`}
             onClick={() => {
               fetchMatchStats(match);
             }}
@@ -6098,35 +6149,90 @@ function MatchesSection({
                 </div>
               </div>
 
-              {(match.status === "completed" || match.status === "live") && (
-                <div className="flex items-center gap-4 sm:gap-10 bg-white/5 p-4 sm:p-6 py-3 sm:py-4 rounded-2xl sm:rounded-3xl border border-white/10 w-full justify-around backdrop-blur-xl relative overflow-hidden group/score">
-                  <div className="absolute inset-0 bg-white/[0.01] pointer-events-none" />
-                  <div className="text-center">
-                    <div className="text-xl sm:text-2xl font-black italic text-white tracking-tighter">
-                      {match.score.teamA.runs}
-                      <span className="text-xs sm:text-sm text-brand mx-0.5">
-                        /
-                      </span>
-                      {match.score.teamA.wickets}
+              {(match.status === "completed" || match.status === "live") && (() => {
+                const currentInningsNum = activeInningsToggle[match.id] || 1;
+                const isFirstInnings = currentInningsNum === 1;
+                const isBattingA = (match.battingFirst || 'teamA') === 'teamA';
+                const isTeamA = isFirstInnings ? isBattingA : !isBattingA;
+                const score = isTeamA ? match.score.teamA : match.score.teamB;
+                const battingName = isTeamA ? match.teamAName : match.teamBName;
+
+                return (
+                  <div className="w-full mt-4 flex flex-col gap-4">
+                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveInningsToggle((prev) => ({ ...prev, [match.id]: 1 }));
+                        }}
+                        className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                          currentInningsNum === 1
+                            ? "bg-brand text-black shadow-lg shadow-brand/20"
+                            : "text-text-dim hover:text-white"
+                        }`}
+                      >
+                        Innings 1
+                      </button>
+                      {(match.currentInnings > 1 || match.status === "completed") && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveInningsToggle((prev) => ({ ...prev, [match.id]: 2 }));
+                          }}
+                          className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                            currentInningsNum === 2
+                              ? "bg-brand text-black shadow-lg shadow-brand/20"
+                              : "text-text-dim hover:text-white"
+                          }`}
+                        >
+                          Innings 2
+                        </button>
+                      )}
                     </div>
-                    <div className="text-[8px] sm:text-[9px] font-black text-text-dim uppercase tracking-[0.2em] italic mt-1">
-                      {match.score.teamA.overs} OV
+                    
+                    <div className="flex items-center gap-3 sm:gap-10 bg-white/5 p-3 sm:p-6 py-3 sm:py-5 rounded-xl sm:rounded-3xl border border-white/10 w-full justify-center backdrop-blur-xl relative overflow-hidden group/score">
+                      <div className="absolute inset-0 bg-white/[0.01] pointer-events-none" />
+                      <div className="text-center">
+                        <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-text-dim italic mb-1.5 sm:mb-2">
+                          {battingName} (Batting)
+                        </div>
+                        <div className="text-xl sm:text-3xl font-black italic text-white tracking-tighter flex items-center justify-center overflow-hidden">
+                          <AnimatePresence mode="popLayout">
+                            <motion.div
+                              key={`runs-${score.runs}`}
+                              initial={{ y: 20, opacity: 0 }}
+                              animate={{ y: 0, opacity: 1 }}
+                              exit={{ y: -20, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: "backOut" }}
+                              className="inline-block"
+                            >
+                              {score.runs}
+                            </motion.div>
+                          </AnimatePresence>
+                          <span className="text-xs sm:text-base text-brand mx-1">
+                            /
+                          </span>
+                          <AnimatePresence mode="popLayout">
+                            <motion.div
+                              key={`wickets-${score.wickets}`}
+                              initial={{ y: 20, opacity: 0 }}
+                              animate={{ y: 0, opacity: 1 }}
+                              exit={{ y: -20, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: "backOut" }}
+                              className="inline-block"
+                            >
+                              {score.wickets}
+                            </motion.div>
+                          </AnimatePresence>
+                        </div>
+                        <div className="text-[8px] sm:text-[10px] font-black text-brand uppercase tracking-[0.2em] italic mt-1 sm:mt-2">
+                          {score.overs} OV
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-xl sm:text-2xl font-black italic text-white tracking-tighter">
-                      {match.score.teamB.runs}
-                      <span className="text-xs sm:text-sm text-brand mx-0.5">
-                        /
-                      </span>
-                      {match.score.teamB.wickets}
-                    </div>
-                    <div className="text-[8px] sm:text-[9px] font-black text-text-dim uppercase tracking-[0.2em] italic mt-1">
-                      {match.score.teamB.overs} OV
-                    </div>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             <div className="pt-6 sm:pt-8 border-t border-white/10 flex flex-col gap-3 sm:gap-4">
@@ -6867,7 +6973,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
       <div className="flex flex-col gap-4 sm:gap-6 lg:gap-8">
         <div className="bg-bg-secondary border border-yellow-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-yellow-500/20 transition-all rounded-full" />
-          <h3 className="text-lg font-black uppercase italic text-yellow-500 mb-6 flex items-center gap-2">
+          <h3 className="text-base font-black uppercase italic text-yellow-500 mb-6 flex items-center gap-2">
             <Star size={20} /> Player of the Tournament
           </h3>
           <div className="space-y-3 relative z-10">
@@ -6957,7 +7063,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
         <div className="bg-bg-secondary border border-white/5 rounded-[2rem] p-6 lg:p-8 shadow-xl flex flex-col gap-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
             <div>
-              <h3 className="text-xl font-black uppercase italic text-brand tracking-tighter flex items-center gap-2">
+              <h3 className="text-base font-black uppercase italic text-brand tracking-tighter flex items-center gap-2">
                 <Target size={22} className="text-brand" /> Player Tactics Comparison
               </h3>
               <p className="text-[9px] font-bold uppercase tracking-widest text-text-dim">
@@ -7174,7 +7280,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
 
         <div className="bg-bg-secondary border border-orange-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-orange-500/20 transition-all rounded-full" />
-          <h3 className="text-lg font-black uppercase italic text-orange-500 mb-6 flex items-center gap-2">
+          <h3 className="text-base font-black uppercase italic text-orange-500 mb-6 flex items-center gap-2">
             <Trophy size={20} /> Most Runs
           </h3>
           <div className="space-y-3 relative z-10">
@@ -7212,7 +7318,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
 
         <div className="bg-bg-secondary border border-purple-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-purple-500/20 transition-all rounded-full" />
-          <h3 className="text-lg font-black uppercase italic text-purple-500 mb-6 flex items-center gap-2">
+          <h3 className="text-base font-black uppercase italic text-purple-500 mb-6 flex items-center gap-2">
             <Medal size={20} /> Most Wickets
           </h3>
           <div className="space-y-3 relative z-10">
@@ -7250,7 +7356,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
 
         <div className="bg-bg-secondary border border-blue-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-blue-500/20 transition-all rounded-full" />
-          <h3 className="text-lg font-black uppercase italic text-blue-500 mb-6 flex items-center gap-2">
+          <h3 className="text-base font-black uppercase italic text-blue-500 mb-6 flex items-center gap-2">
             <Activity size={20} /> Highest Strike Rate
           </h3>
           <div className="space-y-3 relative z-10">
@@ -7287,7 +7393,7 @@ function TournamentAnalyticsSection({ teams }: { teams: any[] }) {
 
         <div className="bg-bg-secondary border border-green-500/30 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-green-500/20 transition-all rounded-full" />
-          <h3 className="text-lg font-black uppercase italic text-green-500 mb-6 flex items-center gap-2">
+          <h3 className="text-base font-black uppercase italic text-green-500 mb-6 flex items-center gap-2">
             <Target size={20} /> Best Economy Rate
           </h3>
           <div className="space-y-3 relative z-10">

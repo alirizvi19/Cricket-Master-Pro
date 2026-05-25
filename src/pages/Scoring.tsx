@@ -1083,7 +1083,7 @@ export default function Scoring() {
           </div>
 
           <div className="relative z-10 text-center space-y-2">
-            <div className="flex items-center justify-center gap-1 h-[48px] overflow-hidden select-none">
+            <div className="flex items-center justify-center gap-1 h-[56px] sm:h-[64px] overflow-hidden select-none">
               <div className="relative flex items-center justify-center min-w-[32px] h-full">
                 <AnimatePresence mode="popLayout">
                   <motion.span 
@@ -1092,14 +1092,14 @@ export default function Scoring() {
                     animate={{ y: 0, opacity: 1, scale: 1, color: "#ffffff" }}
                     exit={{ y: -24, opacity: 0, scale: 0.8 }}
                     transition={{ type: "spring", stiffness: 450, damping: 20 }}
-                    className="text-[40px] font-black italic tracking-tighter leading-none inline-block origin-center"
+                    className="text-[48px] sm:text-[56px] font-black italic tracking-tighter leading-none inline-block origin-center"
                   >
                     {score.runs}
                   </motion.span>
                 </AnimatePresence>
               </div>
 
-              <span className="text-[40px] font-black italic tracking-tighter leading-none text-white/40">/</span>
+              <span className="text-[48px] sm:text-[56px] font-black italic tracking-tighter leading-none text-white/40">/</span>
 
               <div className="relative flex items-center justify-center min-w-[24px] h-full">
                 <AnimatePresence mode="popLayout">
@@ -1109,7 +1109,7 @@ export default function Scoring() {
                     animate={{ y: 0, opacity: 1, scale: 1, color: "#ffffff" }}
                     exit={{ y: -24, opacity: 0, scale: 0.8 }}
                     transition={{ type: "spring", stiffness: 450, damping: 20 }}
-                    className="text-[40px] font-black italic tracking-tighter leading-none inline-block origin-center"
+                    className="text-[48px] sm:text-[56px] font-black italic tracking-tighter leading-none inline-block origin-center"
                   >
                     {score.wickets}
                   </motion.span>
