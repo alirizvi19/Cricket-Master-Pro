@@ -3447,6 +3447,63 @@ function TeamsSection({
             </div>
 
             <form onSubmit={handleUpdateStats} className="space-y-8">
+              {/* Radar Chart Section */}
+              {(() => {
+                const getRadarData = (stats: any) => {
+                  const batAvg = Math.min(100, ((stats.battingAverage || 0) / 50) * 100);
+                  const batSR = Math.min(100, ((stats.strikeRate || 0) / 200) * 100);
+                  const boundMatch = stats.matchesPlayed ? ((stats.fours || 0) + (stats.sixes || 0)) / stats.matchesPlayed : 0;
+                  const power = Math.min(100, (boundMatch / 5) * 100);
+              
+                  let bowAvg = 0;
+                  if (stats.wicketsTaken > 0) {
+                    const avg = stats.bowlingAverage || 0;
+                    bowAvg = Math.max(0, Math.min(100, ((50 - avg) / 35) * 100)); // Lower avg is better
+                  }
+                  
+                  let econ = 0;
+                  if (stats.oversBowled > 0) {
+                    const ec = stats.economyRate || 0;
+                    econ = Math.max(0, Math.min(100, ((12 - ec) / 7) * 100)); // Lower economy is better
+                  }
+                  
+                  const wpm = stats.matchesPlayed ? (stats.wicketsTaken || 0) / stats.matchesPlayed : 0;
+                  const wicketThreat = Math.min(100, (wpm / 3) * 100);
+              
+                  return [
+                    { subject: 'Bat Avg', A: batAvg, fullMark: 100 },
+                    { subject: 'Bat SR', A: batSR, fullMark: 100 },
+                    { subject: 'Power', A: power, fullMark: 100 },
+                    { subject: 'Wicket Threat', A: wicketThreat, fullMark: 100 },
+                    { subject: 'Bowl Econ', A: econ, fullMark: 100 },
+                    { subject: 'Bowl Avg', A: bowAvg, fullMark: 100 },
+                  ];
+                };
+                const radarData = getRadarData(statsForm);
+
+                return (
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-text-dim italic border-b border-white/5 pb-2">
+                      Performance Profile
+                    </h3>
+                    <div className="h-[250px] w-full bg-white/5 rounded-2xl border border-white/5 p-4 flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                          <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 'bold' }} />
+                          <Radar name="Performance" dataKey="A" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.4} />
+                          <RechartsTooltip 
+                            contentStyle={{ backgroundColor: '#111', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '1rem' }}
+                            itemStyle={{ color: '#f59e0b', fontWeight: 'bold' }}
+                            formatter={(value: number) => [`${Math.round(value)}/100`, "Rating"]}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* General Section */}
               <div className="space-y-4">
                 <h3 className="text-xs font-black uppercase tracking-widest text-text-dim italic border-b border-white/5 pb-2">

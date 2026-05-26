@@ -818,6 +818,40 @@ export default function Scoring() {
   const crr = totalBalls > 0 ? (score.runs / (totalBalls / 6)).toFixed(2) : "0.00";
   const projected = crr !== "0.00" ? Math.round(parseFloat(crr) * displayMaxOvers) : 0;
 
+  // Win probability calculation
+  const getWinProbability = () => {
+    const wickets = score.wickets;
+    const runs = score.runs;
+    const oversBowled = Math.floor(score.overs) + (Math.round((score.overs % 1) * 10)) / 6;
+    const oversRemaining = displayMaxOvers - oversBowled;
+    const ballsRemaining = Math.max(0, Math.floor(oversRemaining * 6));
+    const wicketsInHand = 10 - wickets;
+    
+    if (match.currentInnings === 2) {
+      const target = match.score[opponentTeamKey].runs + 1;
+      const runsRequired = target - runs;
+      
+      if (runsRequired <= 0) return { bat: 100, bowl: 0 };
+      if (wicketsInHand === 0 || ballsRemaining === 0) return { bat: 0, bowl: 100 };
+      
+      const rrr = (runsRequired / ballsRemaining) * 6;
+      const crrValue = parseFloat(crr) || 0;
+      
+      let prob = 50;
+      if (crrValue > 0) prob += (crrValue - rrr) * 5; 
+      prob += (wicketsInHand - 5) * 4;
+      
+      const progress = oversBowled / displayMaxOvers;
+      prob = 50 + (prob - 50) * Math.max(0.2, progress * 1.5);
+      
+      prob = Math.min(Math.max(Math.round(prob), 1), 99);
+      return { bat: prob, bowl: 100 - prob };
+    }
+    
+    return null; // Don't show for 1st innings easily to avoid confusion
+  };
+  const winProb = getWinProbability();
+
   // Innings completion status
   const isInningsCompleted = match.status === 'innings_completed';
   const isMatchCompleted = match.status === 'completed';
@@ -1142,6 +1176,26 @@ export default function Scoring() {
                 <div className="text-[8px] font-bold uppercase text-white/30 tracking-widest mt-1">
                   Target: {match.score[opponentTeamKey].runs + 1}
                 </div>
+                {winProb && (
+                  <div className="mt-3 max-w-[200px] mx-auto w-full space-y-1">
+                    <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-white/50">
+                      <span>{match.battingTeamName} {winProb.bat}%</span>
+                      <span>{match.opponentTeamName} {winProb.bowl}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden flex">
+                      <motion.div 
+                        initial={{ width: '50%' }}
+                        animate={{ width: `${winProb.bat}%` }}
+                        className="h-full bg-brand"
+                      />
+                      <motion.div 
+                        initial={{ width: '50%' }}
+                        animate={{ width: `${winProb.bowl}%` }}
+                        className="h-full bg-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

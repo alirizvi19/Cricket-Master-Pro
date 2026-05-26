@@ -14,6 +14,11 @@ export async function exportTournamentToPDF(tournamentId: string) {
   );
   const teams = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 
+  const matchesSnap = await getDocs(
+    query(collection(db, "matches"), where("tournamentId", "==", tournamentId)),
+  );
+  const matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+
   const teamsWithPlayers = await Promise.all(
     teams.map(async (t) => {
       const playersSnap = await getDocs(
@@ -23,6 +28,63 @@ export async function exportTournamentToPDF(tournamentId: string) {
         id: p.id,
         ...(p.data() as any),
       }));
+
+      // Calculate standings for this team
+      const teamMatches = matches.filter(
+        (m) =>
+          m.status === "completed" &&
+          (m.teamAId === t.id || m.teamBId === t.id),
+      );
+      const won = teamMatches.filter((m) => m.winnerId === t.id).length;
+      const lost = teamMatches.filter(
+        (m) => m.winnerId && m.winnerId !== t.id && m.winnerId !== "tie",
+      ).length;
+      const tied = teamMatches.filter((m) => m.winnerId === "tie").length;
+
+      let totalRunsScored = 0;
+      let totalOversFaced = 0;
+      let totalRunsConceded = 0;
+      let totalOversBowled = 0;
+
+      teamMatches.forEach((m) => {
+        const isTeamA = m.teamAId === t.id;
+        const ownScore = isTeamA ? m.score.teamA : m.score.teamB;
+        const oppScore = isTeamA ? m.score.teamB : m.score.teamA;
+        const maxOvers = m.maxOvers || 20;
+
+        totalRunsScored += ownScore?.runs || 0;
+        totalRunsConceded += oppScore?.runs || 0;
+
+        if (ownScore?.wickets >= 10) {
+          totalOversFaced += maxOvers;
+        } else {
+          totalOversFaced +=
+            Math.floor(ownScore?.overs || 0) + (((ownScore?.overs || 0) % 1) * 10) / 6;
+        }
+
+        if (oppScore?.wickets >= 10) {
+          totalOversBowled += maxOvers;
+        } else {
+          totalOversBowled +=
+            Math.floor(oppScore?.overs || 0) + (((oppScore?.overs || 0) % 1) * 10) / 6;
+        }
+      });
+
+      const nrrValue =
+        totalOversFaced > 0 && totalOversBowled > 0
+          ? totalRunsScored / totalOversFaced -
+            totalRunsConceded / totalOversBowled
+          : 0;
+
+      t.standings = {
+        played: teamMatches.length,
+        won,
+        lost,
+        tied,
+        points: won * 2 + tied * 1,
+        nrr: nrrValue,
+      };
+
       return t;
     }),
   );
@@ -57,15 +119,23 @@ export async function exportTournamentToPDF(tournamentId: string) {
   docPdf.text("Team Standings", 14, yOffset);
   yOffset += 5;
 
+  teamsWithPlayers.sort((a, b) => {
+    if (a.standings.points !== b.standings.points) {
+      return b.standings.points - a.standings.points;
+    }
+    return b.standings.nrr - a.standings.nrr;
+  });
+
   const teamHeaders = [
-    ["Team Name", "Played", "Won", "Lost", "Net Run Rate"],
+    ["Team Name", "Played", "Won", "Lost", "Points", "Net Run Rate"],
   ];
   const teamData = teamsWithPlayers.map((t) => [
     t.name,
-    t.matchesPlayed || 0,
-    t.wins || 0,
-    t.losses || 0,
-    t.netRunRate || 0,
+    t.standings.played || 0,
+    t.standings.won || 0,
+    t.standings.lost || 0,
+    t.standings.points || 0,
+    t.standings.nrr.toFixed(3) || 0,
   ]);
 
   autoTable(docPdf, {
